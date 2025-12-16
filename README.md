@@ -629,3 +629,4 @@ In hardened mode you should only see 127.0.0.1 connections to Ollama.
 - [Report issues](https://github.com/isair/jarvis/issues)
 - [Join discussions](https://github.com/isair/jarvis/discussions)
 - [Sponsor development](https://github.com/sponsors/isair)
+# jarvis-aibuddy
