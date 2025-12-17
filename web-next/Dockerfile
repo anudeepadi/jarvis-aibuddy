@@ -2,28 +2,21 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Install dependencies needed for native modules
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 
-# Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
 RUN npm ci
+RUN npx prisma generate
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
-
-# Build the application
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -34,7 +27,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install Python, edge-tts, and OpenSSL for TTS and Prisma
+# Install runtime dependencies
 RUN apk add --no-cache python3 py3-pip openssl
 RUN pip3 install edge-tts --break-system-packages
 
@@ -42,17 +35,16 @@ RUN pip3 install edge-tts --break-system-packages
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy necessary files
+# Copy public assets
 COPY --from=builder /app/public ./public
+
+# Copy Prisma files and generated client
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Install prisma CLI locally for migrations
-RUN npm install prisma@5 --prefix /app
-
-# Set correct permissions for prerender cache
+# Set permissions
 RUN mkdir .next
 RUN chown -R nextjs:nodejs .next node_modules prisma
 
@@ -63,9 +55,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Run migrations and start server
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
