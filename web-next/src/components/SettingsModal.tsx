@@ -1,0 +1,239 @@
+'use client'
+
+import { useState } from 'react'
+import { useJarvisStore } from '@/store/jarvis-store'
+
+interface SettingsModalProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const {
+    provider,
+    setProvider,
+    elevenLabsApiKey,
+    elevenLabsAgentId,
+    openaiApiKey,
+    mem0ApiKey,
+    setApiKey,
+    voiceEnabled,
+    setVoiceEnabled,
+    continuousMode,
+    setContinuousMode,
+    memoryEnabled,
+    setMemoryEnabled,
+  } = useJarvisStore()
+
+  const [localKeys, setLocalKeys] = useState({
+    elevenLabsApiKey,
+    elevenLabsAgentId,
+    openaiApiKey,
+    mem0ApiKey,
+  })
+
+  const handleSave = () => {
+    setApiKey('elevenLabsApiKey', localKeys.elevenLabsApiKey)
+    setApiKey('elevenLabsAgentId', localKeys.elevenLabsAgentId)
+    setApiKey('openaiApiKey', localKeys.openaiApiKey)
+    setApiKey('mem0ApiKey', localKeys.mem0ApiKey)
+    onClose()
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md mx-4 bg-[#1a1a1a] rounded-2xl border border-gray-800 p-6 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-medium text-white">Settings</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Provider Selection */}
+        <div className="mb-6">
+          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
+            Provider
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setProvider('elevenlabs')}
+              className={`p-3 rounded-xl border transition-all ${
+                provider === 'elevenlabs'
+                  ? 'border-cyan-500 bg-cyan-500/10 text-white'
+                  : 'border-gray-700 hover:border-gray-600 text-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm">ElevenLabs</div>
+              <div className="text-xs text-gray-500">Conversational AI</div>
+            </button>
+            <button
+              onClick={() => setProvider('openai')}
+              className={`p-3 rounded-xl border transition-all ${
+                provider === 'openai'
+                  ? 'border-cyan-500 bg-cyan-500/10 text-white'
+                  : 'border-gray-700 hover:border-gray-600 text-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm">OpenAI</div>
+              <div className="text-xs text-gray-500">GPT + Web Speech</div>
+            </button>
+          </div>
+        </div>
+
+        {/* ElevenLabs Settings */}
+        {provider === 'elevenlabs' && (
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Agent ID
+              </label>
+              <input
+                type="text"
+                value={localKeys.elevenLabsAgentId}
+                onChange={(e) => setLocalKeys({ ...localKeys, elevenLabsAgentId: e.target.value })}
+                placeholder="agent_xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                API Key <span className="text-gray-600">(if auth enabled)</span>
+              </label>
+              <input
+                type="password"
+                value={localKeys.elevenLabsApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, elevenLabsApiKey: e.target.value })}
+                placeholder="xi_xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* OpenAI Settings */}
+        {provider === 'openai' && (
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                API Key
+              </label>
+              <input
+                type="password"
+                value={localKeys.openaiApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, openaiApiKey: e.target.value })}
+                placeholder="sk-xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mem0 Settings */}
+        <div className="mb-6">
+          <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+            Mem0 API Key <span className="text-gray-600">(optional)</span>
+          </label>
+          <input
+            type="password"
+            value={localKeys.mem0ApiKey}
+            onChange={(e) => setLocalKeys({ ...localKeys, mem0ApiKey: e.target.value })}
+            placeholder="m0-xxxxxxxxxx"
+            className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+          />
+        </div>
+
+        {/* Toggles */}
+        <div className="space-y-4 mb-6 border-t border-gray-800 pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-white">Voice Responses</div>
+              <div className="text-xs text-gray-500">Enable text-to-speech</div>
+            </div>
+            <button
+              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              className={`w-11 h-6 rounded-full transition-colors relative ${
+                voiceEnabled ? 'bg-cyan-500' : 'bg-gray-700'
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  voiceEnabled ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-white">Continuous Mode</div>
+              <div className="text-xs text-gray-500">Auto-resume listening</div>
+            </div>
+            <button
+              onClick={() => setContinuousMode(!continuousMode)}
+              className={`w-11 h-6 rounded-full transition-colors relative ${
+                continuousMode ? 'bg-cyan-500' : 'bg-gray-700'
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  continuousMode ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-white">Memory</div>
+              <div className="text-xs text-gray-500">Remember conversations</div>
+            </div>
+            <button
+              onClick={() => setMemoryEnabled(!memoryEnabled)}
+              className={`w-11 h-6 rounded-full transition-colors relative ${
+                memoryEnabled ? 'bg-cyan-500' : 'bg-gray-700'
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  memoryEnabled ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-cyan-500 text-black text-sm font-medium hover:bg-cyan-400 transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

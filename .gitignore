@@ -1,4 +1,6 @@
 .DS_Store
+.env
+.env.local
 .env/
 .venv/
 __pycache__/
@@ -8,4 +10,11 @@ __pycache__/
 
 # Release artifacts
 release_output.log
+
+# Node
 node_modules/
+.next/
+
+# Editor
+*.swp
+*.swo
