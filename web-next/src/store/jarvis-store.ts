@@ -86,6 +86,10 @@ interface JarvisStore {
   // Memory feedback
   lastMemorySaved: number | null
   setLastMemorySaved: (timestamp: number | null) => void
+
+  // Memory retrieval visibility
+  lastMemoryRetrieved: { count: number; query: string; timestamp: number } | null
+  setLastMemoryRetrieved: (data: { count: number; query: string; timestamp: number } | null) => void
 }
 
 export const useJarvisStore = create<JarvisStore>()(
@@ -165,6 +169,10 @@ export const useJarvisStore = create<JarvisStore>()(
       // Memory feedback
       lastMemorySaved: null,
       setLastMemorySaved: (lastMemorySaved) => set({ lastMemorySaved }),
+
+      // Memory retrieval visibility
+      lastMemoryRetrieved: null,
+      setLastMemoryRetrieved: (lastMemoryRetrieved) => set({ lastMemoryRetrieved }),
     }),
     {
       name: 'jarvis-storage',

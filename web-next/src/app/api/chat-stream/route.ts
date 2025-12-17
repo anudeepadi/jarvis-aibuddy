@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 
-const SYSTEM_PROMPT = `You are Jarvis, an intelligent AI assistant inspired by the AI from Iron Man. You are helpful, witty, and concise. Keep responses brief and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or long explanations - speak naturally as if having a conversation.`
+const BASE_SYSTEM_PROMPT = `You are Jarvis, an intelligent AI assistant inspired by the AI from Iron Man. You are helpful, witty, and concise. Keep responses brief and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or long explanations - speak naturally as if having a conversation.`
 
 interface ConversationMessage {
   role: 'user' | 'assistant'
@@ -9,11 +9,12 @@ interface ConversationMessage {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, apiKey, provider = 'groq', conversationHistory = [] } = await request.json() as {
+    const { message, apiKey, provider = 'groq', conversationHistory = [], memoryContext } = await request.json() as {
       message: string
       apiKey: string
       provider?: string
       conversationHistory?: ConversationMessage[]
+      memoryContext?: string
     }
 
     if (!message || !apiKey) {
@@ -35,6 +36,12 @@ export async function POST(request: NextRequest) {
       content: msg.content
     }))
 
+    // Build system prompt with memory context if available
+    let systemPrompt = BASE_SYSTEM_PROMPT
+    if (memoryContext) {
+      systemPrompt += `\n\n## User Background\n${memoryContext}\n\nUse this information naturally in conversation without explicitly mentioning "memories" or "I remember".`
+    }
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -44,7 +51,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           ...historyMessages,
           { role: 'user', content: message }
         ],

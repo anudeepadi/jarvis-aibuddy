@@ -60,6 +60,7 @@ export function useCartesiaStream() {
     setIsConnected,
     setMicPermission,
     setLastMemorySaved,
+    setLastMemoryRetrieved,
     continuousMode,
   } = useJarvisStore()
 
@@ -337,13 +338,21 @@ export function useCartesiaStream() {
       const data = await response.json()
       if (data.results && data.results.length > 0) {
         const memories = data.results.map((m: { memory: string }) => m.memory).join('\n- ')
-        return `\n\nRelevant memories about the user:\n- ${memories}`
+        // Set memory retrieval indicator
+        setLastMemoryRetrieved({
+          count: data.results.length,
+          query: message.slice(0, 50),
+          timestamp: Date.now(),
+        })
+        // Auto-clear after 5 seconds
+        setTimeout(() => setLastMemoryRetrieved(null), 5000)
+        return `Relevant memories about the user:\n- ${memories}`
       }
     } catch (error) {
       console.warn('Memory fetch failed:', error)
     }
     return ''
-  }, [memoryEnabled, mem0ApiKey])
+  }, [memoryEnabled, mem0ApiKey, setLastMemoryRetrieved])
 
   // Save to memory
   const saveToMemory = useCallback(async (userMessage: string, assistantResponse: string) => {
@@ -383,8 +392,10 @@ export function useCartesiaStream() {
     nextPlayIndexRef.current = 0
     let sentenceIndex = 0
 
-    // Get conversation history for context (last 10 messages = 5 exchanges)
-    const conversationHistory = messages.slice(-10).map(msg => ({
+    // CRITICAL FIX: Get fresh messages from store, not stale closure
+    // This ensures we include the user message that was just added
+    const currentMessages = useJarvisStore.getState().messages
+    const conversationHistory = currentMessages.slice(-10).map(msg => ({
       role: msg.role,
       content: msg.content
     }))
@@ -393,10 +404,11 @@ export function useCartesiaStream() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: memoryContext ? `${message}\n\n[Context: ${memoryContext}]` : message,
+        message,  // Clean message without inline context
         apiKey: groqApiKey,
         provider: 'groq',
         conversationHistory,
+        memoryContext: memoryContext || undefined,  // Send separately for system prompt
       }),
       signal: abortControllerRef.current.signal,
     })
@@ -489,7 +501,7 @@ export function useCartesiaStream() {
 
     await Promise.all(ttsPromises)
     return fullText
-  }, [groqApiKey, getTTSAudio, queueAudioWithIndex, startTypewriter, stopTypewriter, setCurrentTranscript, messages])
+  }, [groqApiKey, getTTSAudio, queueAudioWithIndex, startTypewriter, stopTypewriter, setCurrentTranscript])
 
   // Process recorded audio
   const processAudio = useCallback(async () => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { useJarvisStore } from '@/store/jarvis-store'
 import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
@@ -19,6 +20,8 @@ function LoadingScreen() {
 
 function JarvisInterface() {
   const [showSettings, setShowSettings] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const { data: session } = useSession()
 
   const {
     state,
@@ -35,6 +38,7 @@ function JarvisInterface() {
     groqApiKey,
     cartesiaApiKey,
     lastMemorySaved,
+    lastMemoryRetrieved,
     memoryEnabled,
   } = useJarvisStore()
 
@@ -153,6 +157,19 @@ function JarvisInterface() {
     <main className={`relative w-full h-screen ${bgColor} overflow-hidden`}>
       {/* Status indicators (top left) */}
       <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
+        {/* Memory retrieved indicator */}
+        {lastMemoryRetrieved && memoryEnabled && (
+          <div className="flex items-center gap-2 animate-fade-in">
+            <span className={`text-xs ${isDark ? 'text-blue-400' : 'text-blue-600'} flex items-center gap-1`}>
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+              </svg>
+              {lastMemoryRetrieved.count} {lastMemoryRetrieved.count === 1 ? 'memory' : 'memories'} found
+            </span>
+          </div>
+        )}
+
         {/* Memory saved indicator */}
         {lastMemorySaved && memoryEnabled && (
           <div className="flex items-center gap-2 animate-fade-in">
@@ -166,8 +183,57 @@ function JarvisInterface() {
         )}
       </div>
 
-      {/* Top bar with theme toggle and settings */}
+      {/* Top bar with user menu, theme toggle and settings */}
       <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+        {/* User menu */}
+        {session?.user && (
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors"
+            >
+              {session.user.image ? (
+                <img
+                  src={session.user.image}
+                  alt={session.user.name || 'User'}
+                  className="w-8 h-8 rounded-full border border-gray-700"
+                />
+              ) : (
+                <div className={`w-8 h-8 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-300'} flex items-center justify-center`}>
+                  <span className={`text-sm font-medium ${textColor}`}>
+                    {session.user.name?.[0] || session.user.email?.[0] || '?'}
+                  </span>
+                </div>
+              )}
+              <svg className={`w-4 h-4 ${mutedColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {showUserMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowUserMenu(false)} />
+                <div className={`absolute right-0 mt-2 w-56 rounded-xl ${isDark ? 'bg-gray-900' : 'bg-white'} border ${borderColor} shadow-lg z-40 overflow-hidden`}>
+                  <div className={`px-4 py-3 border-b ${borderColor}`}>
+                    <p className={`text-sm font-medium ${textColor} truncate`}>{session.user.name}</p>
+                    <p className={`text-xs ${mutedColor} truncate`}>{session.user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => signOut({ callbackUrl: '/login' })}
+                    className={`w-full px-4 py-3 text-left text-sm ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'} transition-colors flex items-center gap-2`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Sign out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
