@@ -5,6 +5,7 @@ import { useJarvisStore } from '@/store/jarvis-store'
 import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
 import { useGroqVoice } from '@/hooks/useGroqVoice'
+import { useCartesia } from '@/hooks/useCartesia'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
 
@@ -29,14 +30,26 @@ function JarvisInterface() {
     elevenLabsAgentId,
     openaiApiKey,
     groqApiKey,
+    cartesiaApiKey,
   } = useJarvisStore()
 
   const elevenLabs = useElevenLabs()
   const openAI = useOpenAI()
   const groqVoice = useGroqVoice()
+  const cartesia = useCartesia()
 
-  const currentProvider = provider === 'groq' ? groqVoice : provider === 'elevenlabs' ? elevenLabs : openAI
-  const isConfigured = provider === 'groq' ? !!groqApiKey : provider === 'elevenlabs' ? !!elevenLabsAgentId : !!openaiApiKey
+  // Provider selection: cartesia (best value), elevenlabs (best quality), groq (cheapest), openai (fallback)
+  const currentProvider =
+    provider === 'cartesia' ? cartesia :
+    provider === 'groq' ? groqVoice :
+    provider === 'elevenlabs' ? elevenLabs :
+    openAI
+
+  const isConfigured =
+    provider === 'cartesia' ? (!!groqApiKey && !!openaiApiKey && !!cartesiaApiKey) :
+    provider === 'groq' ? !!groqApiKey :
+    provider === 'elevenlabs' ? !!elevenLabsAgentId :
+    !!openaiApiKey
 
   useEffect(() => {
     if (!isConfigured) {

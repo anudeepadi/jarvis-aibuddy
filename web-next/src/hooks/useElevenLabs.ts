@@ -285,14 +285,16 @@ export function useElevenLabs() {
 
       // Start the ElevenLabs conversation
       if (signedUrl) {
-        // Use signed URL for authenticated agents
+        // Use signed URL for authenticated agents (websocket required for signedUrl)
         await conversation.startSession({
           signedUrl,
+          connectionType: 'websocket',
         })
       } else {
         // Use agent ID directly for non-authenticated agents
         await conversation.startSession({
           agentId: elevenLabsAgentId,
+          connectionType: 'webrtc',
         })
       }
 

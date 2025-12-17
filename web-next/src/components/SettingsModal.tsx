@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useJarvisStore, OpenAIVoice } from '@/store/jarvis-store'
+import { useJarvisStore, OpenAIVoice, CartesiaVoice } from '@/store/jarvis-store'
 
 const OPENAI_VOICES: { id: OpenAIVoice; name: string; description: string }[] = [
   { id: 'onyx', name: 'Onyx', description: 'Deep & authoritative' },
@@ -10,6 +10,15 @@ const OPENAI_VOICES: { id: OpenAIVoice; name: string; description: string }[] = 
   { id: 'alloy', name: 'Alloy', description: 'Neutral & balanced' },
   { id: 'nova', name: 'Nova', description: 'Friendly & upbeat' },
   { id: 'shimmer', name: 'Shimmer', description: 'Soft & gentle' },
+]
+
+const CARTESIA_VOICES: { id: CartesiaVoice; name: string; description: string }[] = [
+  { id: 'british-butler', name: 'British Butler', description: 'Professional British' },
+  { id: 'confident-british', name: 'Confident', description: 'Assertive British' },
+  { id: 'deep-narrator', name: 'Deep Narrator', description: 'Deep male voice' },
+  { id: 'professional-male', name: 'Professional', description: 'Business male' },
+  { id: 'professional-female', name: 'Pro Female', description: 'Business female' },
+  { id: 'warm-female', name: 'Warm Female', description: 'Friendly narrator' },
 ]
 
 interface SettingsModalProps {
@@ -25,6 +34,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     elevenLabsAgentId,
     openaiApiKey,
     groqApiKey,
+    cartesiaApiKey,
     mem0ApiKey,
     setApiKey,
     voiceEnabled,
@@ -35,6 +45,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setMemoryEnabled,
     openaiVoice,
     setOpenaiVoice,
+    cartesiaVoice,
+    setCartesiaVoice,
   } = useJarvisStore()
 
   const [localKeys, setLocalKeys] = useState({
@@ -42,6 +54,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     elevenLabsAgentId,
     openaiApiKey,
     groqApiKey,
+    cartesiaApiKey,
     mem0ApiKey,
   })
 
@@ -50,6 +63,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setApiKey('elevenLabsAgentId', localKeys.elevenLabsAgentId)
     setApiKey('openaiApiKey', localKeys.openaiApiKey)
     setApiKey('groqApiKey', localKeys.groqApiKey)
+    setApiKey('cartesiaApiKey', localKeys.cartesiaApiKey)
     setApiKey('mem0ApiKey', localKeys.mem0ApiKey)
     onClose()
   }
@@ -84,17 +98,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
             Provider
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => setProvider('groq')}
+              onClick={() => setProvider('cartesia')}
               className={`p-3 rounded-xl border transition-all ${
-                provider === 'groq'
+                provider === 'cartesia'
                   ? 'border-cyan-500 bg-cyan-500/10 text-white'
                   : 'border-gray-700 hover:border-gray-600 text-gray-300'
               }`}
             >
-              <div className="font-medium text-sm">Groq</div>
-              <div className="text-xs text-gray-500">Fast & Free TTS</div>
+              <div className="font-medium text-sm">Cartesia</div>
+              <div className="text-xs text-gray-500">Best Value ~$0.02/min</div>
             </button>
             <button
               onClick={() => setProvider('elevenlabs')}
@@ -108,6 +122,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className="text-xs text-gray-500">Best Quality</div>
             </button>
             <button
+              onClick={() => setProvider('groq')}
+              className={`p-3 rounded-xl border transition-all ${
+                provider === 'groq'
+                  ? 'border-cyan-500 bg-cyan-500/10 text-white'
+                  : 'border-gray-700 hover:border-gray-600 text-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm">Groq</div>
+              <div className="text-xs text-gray-500">Cheapest ~$0.002/min</div>
+            </button>
+            <button
               onClick={() => setProvider('openai')}
               className={`p-3 rounded-xl border transition-all ${
                 provider === 'openai'
@@ -116,10 +141,84 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               }`}
             >
               <div className="font-medium text-sm">OpenAI</div>
-              <div className="text-xs text-gray-500">GPT + Speech</div>
+              <div className="text-xs text-gray-500">GPT + TTS ~$0.03/min</div>
             </button>
           </div>
         </div>
+
+        {/* Cartesia Settings */}
+        {provider === 'cartesia' && (
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Groq API Key <span className="text-gray-600">(for STT)</span>
+              </label>
+              <input
+                type="password"
+                value={localKeys.groqApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, groqApiKey: e.target.value })}
+                placeholder="gsk_xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                console.groq.com - Free Whisper STT
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                OpenAI API Key <span className="text-gray-600">(for LLM)</span>
+              </label>
+              <input
+                type="password"
+                value={localKeys.openaiApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, openaiApiKey: e.target.value })}
+                placeholder="sk-xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                platform.openai.com - GPT-4o-mini
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Cartesia API Key <span className="text-gray-600">(for TTS)</span>
+              </label>
+              <input
+                type="password"
+                value={localKeys.cartesiaApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, cartesiaApiKey: e.target.value })}
+                placeholder="sk_car_xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                cartesia.ai - Ultra-low latency TTS (~40ms)
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Voice
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {CARTESIA_VOICES.map((voice) => (
+                  <button
+                    key={voice.id}
+                    onClick={() => setCartesiaVoice(voice.id)}
+                    className={`p-2 rounded-lg border transition-all text-left ${
+                      cartesiaVoice === voice.id
+                        ? 'border-cyan-500 bg-cyan-500/10'
+                        : 'border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className={`text-sm font-medium ${cartesiaVoice === voice.id ? 'text-white' : 'text-gray-300'}`}>
+                      {voice.name}
+                    </div>
+                    <div className="text-xs text-gray-500">{voice.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Groq Settings */}
         {provider === 'groq' && (

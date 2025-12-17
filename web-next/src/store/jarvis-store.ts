@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type ConversationState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error'
-export type AIProvider = 'elevenlabs' | 'openai' | 'groq'
+export type AIProvider = 'elevenlabs' | 'openai' | 'groq' | 'cartesia'
 export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+export type CartesiaVoice = 'british-butler' | 'confident-british' | 'deep-narrator' | 'professional-male' | 'professional-female' | 'warm-female'
 
 interface Message {
   id: string
@@ -30,8 +31,9 @@ interface JarvisStore {
   elevenLabsAgentId: string
   openaiApiKey: string
   groqApiKey: string
+  cartesiaApiKey: string
   mem0ApiKey: string
-  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'mem0ApiKey', value: string) => void
+  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'cartesiaApiKey' | 'mem0ApiKey', value: string) => void
 
   // Settings
   voiceEnabled: boolean
@@ -42,6 +44,8 @@ interface JarvisStore {
   setMemoryEnabled: (enabled: boolean) => void
   openaiVoice: OpenAIVoice
   setOpenaiVoice: (voice: OpenAIVoice) => void
+  cartesiaVoice: CartesiaVoice
+  setCartesiaVoice: (voice: CartesiaVoice) => void
 
   // Conversation history
   messages: Message[]
@@ -84,6 +88,7 @@ export const useJarvisStore = create<JarvisStore>()(
       elevenLabsAgentId: '',
       openaiApiKey: '',
       groqApiKey: '',
+      cartesiaApiKey: '',
       mem0ApiKey: '',
       setApiKey: (key, value) => set({ [key]: value }),
 
@@ -96,6 +101,8 @@ export const useJarvisStore = create<JarvisStore>()(
       setMemoryEnabled: (memoryEnabled) => set({ memoryEnabled }),
       openaiVoice: 'onyx',
       setOpenaiVoice: (openaiVoice) => set({ openaiVoice }),
+      cartesiaVoice: 'british-butler',
+      setCartesiaVoice: (cartesiaVoice) => set({ cartesiaVoice }),
 
       // Conversation
       messages: [],
@@ -136,12 +143,14 @@ export const useJarvisStore = create<JarvisStore>()(
         elevenLabsAgentId: state.elevenLabsAgentId,
         openaiApiKey: state.openaiApiKey,
         groqApiKey: state.groqApiKey,
+        cartesiaApiKey: state.cartesiaApiKey,
         mem0ApiKey: state.mem0ApiKey,
         provider: state.provider,
         voiceEnabled: state.voiceEnabled,
         continuousMode: state.continuousMode,
         memoryEnabled: state.memoryEnabled,
         openaiVoice: state.openaiVoice,
+        cartesiaVoice: state.cartesiaVoice,
       }),
     }
   )
