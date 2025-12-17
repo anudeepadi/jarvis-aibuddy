@@ -5,7 +5,7 @@ import { useJarvisStore } from '@/store/jarvis-store'
 import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
 import { useGroqVoice } from '@/hooks/useGroqVoice'
-import { useCartesia } from '@/hooks/useCartesia'
+import { useCartesiaStream } from '@/hooks/useCartesiaStream'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
 
@@ -23,6 +23,7 @@ function JarvisInterface() {
   const {
     state,
     provider,
+    ttsProvider,
     isConnected,
     currentTranscript,
     messages,
@@ -36,17 +37,18 @@ function JarvisInterface() {
   const elevenLabs = useElevenLabs()
   const openAI = useOpenAI()
   const groqVoice = useGroqVoice()
-  const cartesia = useCartesia()
+  const cartesiaStream = useCartesiaStream()
 
   // Provider selection: cartesia (best value), elevenlabs (best quality), groq (cheapest), openai (fallback)
   const currentProvider =
-    provider === 'cartesia' ? cartesia :
+    provider === 'cartesia' ? cartesiaStream :
     provider === 'groq' ? groqVoice :
     provider === 'elevenlabs' ? elevenLabs :
     openAI
 
+  // Cartesia provider: needs Groq API key, and Cartesia key only if using Cartesia TTS (not Edge)
   const isConfigured =
-    provider === 'cartesia' ? (!!groqApiKey && !!openaiApiKey && !!cartesiaApiKey) :
+    provider === 'cartesia' ? (!!groqApiKey && (ttsProvider === 'edge' || !!cartesiaApiKey)) :
     provider === 'groq' ? !!groqApiKey :
     provider === 'elevenlabs' ? !!elevenLabsAgentId :
     !!openaiApiKey
