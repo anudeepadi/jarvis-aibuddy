@@ -4,7 +4,6 @@ import { promisify } from 'util'
 import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import path from 'path'
-import os from 'os'
 
 const execAsync = promisify(exec)
 
@@ -21,6 +20,9 @@ const EDGE_VOICES: Record<string, string> = {
   'australian-female': 'en-AU-NatashaNeural', // Australian female
 }
 
+// Use /tmp directly on macOS (avoids permission issues with os.tmpdir())
+const TEMP_DIR = '/tmp'
+
 export async function POST(request: NextRequest) {
   try {
     const { text, voiceId = 'british-male', rate = '+0%', pitch = '+0Hz' } = await request.json()
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const voice = EDGE_VOICES[voiceId] || voiceId
-    const tempFile = path.join(os.tmpdir(), `edge-tts-${randomUUID()}.mp3`)
+    const tempFile = path.join(TEMP_DIR, `edge-tts-${randomUUID()}.mp3`)
 
     // Escape text for shell - replace quotes and special chars
     const escapedText = text
