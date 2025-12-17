@@ -5,6 +5,8 @@ export type ConversationState = 'idle' | 'listening' | 'thinking' | 'speaking' |
 export type AIProvider = 'elevenlabs' | 'openai' | 'groq' | 'cartesia'
 export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 export type CartesiaVoice = 'british-butler' | 'confident-british' | 'deep-narrator' | 'professional-male' | 'wise-man' | 'reading-man' | 'professional-female' | 'british-lady' | 'warm-female' | 'commercial-lady'
+export type EdgeVoice = 'british-male' | 'american-male' | 'australian-male' | 'british-female' | 'american-female' | 'australian-female'
+export type TTSProvider = 'cartesia' | 'edge'
 
 interface Message {
   id: string
@@ -46,6 +48,10 @@ interface JarvisStore {
   setOpenaiVoice: (voice: OpenAIVoice) => void
   cartesiaVoice: CartesiaVoice
   setCartesiaVoice: (voice: CartesiaVoice) => void
+  ttsProvider: TTSProvider
+  setTtsProvider: (provider: TTSProvider) => void
+  edgeVoice: EdgeVoice
+  setEdgeVoice: (voice: EdgeVoice) => void
 
   // Conversation history
   messages: Message[]
@@ -103,6 +109,10 @@ export const useJarvisStore = create<JarvisStore>()(
       setOpenaiVoice: (openaiVoice) => set({ openaiVoice }),
       cartesiaVoice: 'british-butler',
       setCartesiaVoice: (cartesiaVoice) => set({ cartesiaVoice }),
+      ttsProvider: 'edge', // Default to free Edge TTS
+      setTtsProvider: (ttsProvider) => set({ ttsProvider }),
+      edgeVoice: 'british-male', // Best JARVIS voice
+      setEdgeVoice: (edgeVoice) => set({ edgeVoice }),
 
       // Conversation
       messages: [],
@@ -151,6 +161,8 @@ export const useJarvisStore = create<JarvisStore>()(
         memoryEnabled: state.memoryEnabled,
         openaiVoice: state.openaiVoice,
         cartesiaVoice: state.cartesiaVoice,
+        ttsProvider: state.ttsProvider,
+        edgeVoice: state.edgeVoice,
       }),
     }
   )

@@ -26,6 +26,8 @@ export function useCartesia() {
     openaiApiKey,
     cartesiaApiKey,
     cartesiaVoice,
+    ttsProvider,
+    edgeVoice,
     setState,
     setAudioLevel,
     setCurrentTranscript,
@@ -54,15 +56,17 @@ export function useCartesia() {
     return data.text || ''
   }, [groqApiKey])
 
-  // Get chat response from GPT-4o-mini
+  // Get chat response from Groq Llama 3.3 70B (faster) or GPT-4o-mini (fallback)
   const getChatResponse = useCallback(async (message: string): Promise<string> => {
+    // Prefer Groq for speed (~100-300ms vs 1-2s for OpenAI)
+    const useGroq = !!groqApiKey
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
-        apiKey: openaiApiKey,
-        provider: 'openai',
+        apiKey: useGroq ? groqApiKey : openaiApiKey,
+        provider: useGroq ? 'groq' : 'openai',
       }),
     })
 
@@ -74,8 +78,28 @@ export function useCartesia() {
     return data.text || ''
   }, [openaiApiKey])
 
-  // Get TTS audio from Cartesia (ultra-low latency ~40ms)
+  // Get TTS audio - Edge TTS (FREE) or Cartesia (paid, ultra-low latency)
   const getAudioResponse = useCallback(async (text: string): Promise<Blob> => {
+    // Use Edge TTS (FREE) if selected or if no Cartesia API key
+    if (ttsProvider === 'edge' || !cartesiaApiKey) {
+      const response = await fetch('/api/edge-tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          voiceId: edgeVoice || 'british-male',
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(`Edge TTS failed: ${error}`)
+      }
+
+      return await response.blob()
+    }
+
+    // Use Cartesia (paid, ~$0.01/1K chars, ultra-low latency ~40ms)
     const response = await fetch('/api/cartesia-tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,7 +116,7 @@ export function useCartesia() {
     }
 
     return await response.blob()
-  }, [cartesiaApiKey, cartesiaVoice])
+  }, [ttsProvider, cartesiaApiKey, cartesiaVoice, edgeVoice])
 
   // Play audio with visualization
   const playAudio = useCallback((audioBlob: Blob): Promise<void> => {
@@ -327,8 +351,14 @@ export function useCartesia() {
 
   // Start conversation
   const startConversation = useCallback(async () => {
-    if (!groqApiKey || !openaiApiKey || !cartesiaApiKey) {
-      console.error('Missing API keys for Cartesia provider')
+    // Need Groq for STT and LLM (or OpenAI as fallback)
+    // Cartesia API key only required if using Cartesia TTS (not Edge TTS)
+    if (!groqApiKey) {
+      console.error('Missing Groq API key for STT')
+      return false
+    }
+    if (ttsProvider === 'cartesia' && !cartesiaApiKey) {
+      console.error('Missing Cartesia API key for TTS (switch to Edge TTS for free)')
       return false
     }
 
@@ -353,7 +383,7 @@ export function useCartesia() {
       stopAudioAnalysis()
       return false
     }
-  }, [groqApiKey, openaiApiKey, cartesiaApiKey, startAudioAnalysis, stopAudioAnalysis, setState, setIsConnected, startRecording])
+  }, [groqApiKey, cartesiaApiKey, ttsProvider, startAudioAnalysis, stopAudioAnalysis, setState, setIsConnected, startRecording])
 
   // End conversation
   const endConversation = useCallback(async () => {
@@ -387,9 +417,13 @@ export function useCartesia() {
     }
   }, [stopAudioAnalysis])
 
+  // With Edge TTS (free): Only need Groq API key
+  // With Cartesia TTS (paid): Need Groq + Cartesia API keys
+  const isReady = !!groqApiKey && (ttsProvider === 'edge' || !!cartesiaApiKey)
+
   return {
     startConversation,
     endConversation,
-    isReady: !!groqApiKey && !!openaiApiKey && !!cartesiaApiKey,
+    isReady,
   }
 }
