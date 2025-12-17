@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useJarvisStore, OpenAIVoice, CartesiaVoice, EdgeVoice, TTSProvider } from '@/store/jarvis-store'
+import { useJarvisStore, OpenAIVoice, CartesiaVoice, EdgeVoice, TTSProvider, Theme, Language } from '@/store/jarvis-store'
 
 const EDGE_VOICES: { id: EdgeVoice; name: string; description: string }[] = [
   { id: 'british-male', name: 'British Male', description: 'Ryan - Best for JARVIS' },
@@ -28,6 +28,21 @@ const CARTESIA_VOICES: { id: CartesiaVoice; name: string; description: string }[
   { id: 'professional-male', name: 'Support Man', description: 'Helpful & clear' },
   { id: 'wise-man', name: 'Wise Man', description: 'Calm & thoughtful' },
   { id: 'british-lady', name: 'British Lady', description: 'Elegant female' },
+]
+
+const LANGUAGES: { id: Language; name: string }[] = [
+  { id: 'en', name: 'English' },
+  { id: 'hi', name: 'Hindi' },
+  { id: 'es', name: 'Spanish' },
+  { id: 'fr', name: 'French' },
+  { id: 'de', name: 'German' },
+  { id: 'it', name: 'Italian' },
+  { id: 'pt', name: 'Portuguese' },
+  { id: 'ja', name: 'Japanese' },
+  { id: 'ko', name: 'Korean' },
+  { id: 'zh', name: 'Chinese' },
+  { id: 'ar', name: 'Arabic' },
+  { id: 'ru', name: 'Russian' },
 ]
 
 interface SettingsModalProps {
@@ -60,7 +75,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setTtsProvider,
     edgeVoice,
     setEdgeVoice,
+    language,
+    setLanguage,
+    theme,
+    setTheme,
   } = useJarvisStore()
+
+  const isDark = theme === 'dark'
 
   const [localKeys, setLocalKeys] = useState({
     elevenLabsApiKey,
@@ -83,6 +104,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   if (!isOpen) return null
 
+  // Theme-based colors
+  const modalBg = isDark ? 'bg-[#1a1a1a]' : 'bg-white'
+  const modalBorder = isDark ? 'border-gray-800' : 'border-gray-200'
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900'
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500'
+  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400'
+  const inputBg = isDark ? 'bg-[#0d0d0d]' : 'bg-gray-50'
+  const inputBorder = isDark ? 'border-gray-700' : 'border-gray-200'
+  const buttonBorder = isDark ? 'border-gray-700' : 'border-gray-200'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -92,13 +123,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md mx-4 bg-[#1a1a1a] rounded-2xl border border-gray-800 p-6 max-h-[90vh] overflow-y-auto">
+      <div className={`relative w-full max-w-md mx-4 ${modalBg} rounded-2xl border ${modalBorder} p-6 max-h-[90vh] overflow-y-auto`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-medium text-white">Settings</h2>
+          <h2 className={`text-lg font-medium ${textPrimary}`}>Settings</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+            className={`w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors ${textSecondary} hover:${textPrimary}`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -383,16 +414,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* Toggles */}
-        <div className="space-y-4 mb-6 border-t border-gray-800 pt-6">
+        <div className={`space-y-4 mb-6 border-t ${modalBorder} pt-6`}>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-white">Voice Responses</div>
-              <div className="text-xs text-gray-500">Enable text-to-speech</div>
+              <div className={`text-sm ${textPrimary}`}>Voice Responses</div>
+              <div className={`text-xs ${textMuted}`}>Enable text-to-speech</div>
             </div>
             <button
               onClick={() => setVoiceEnabled(!voiceEnabled)}
               className={`w-11 h-6 rounded-full transition-colors relative ${
-                voiceEnabled ? 'bg-cyan-500' : 'bg-gray-700'
+                voiceEnabled ? 'bg-cyan-500' : (isDark ? 'bg-gray-700' : 'bg-gray-300')
               }`}
             >
               <div
@@ -405,13 +436,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-white">Continuous Mode</div>
-              <div className="text-xs text-gray-500">Auto-resume listening</div>
+              <div className={`text-sm ${textPrimary}`}>Continuous Mode</div>
+              <div className={`text-xs ${textMuted}`}>Auto-resume listening</div>
             </div>
             <button
               onClick={() => setContinuousMode(!continuousMode)}
               className={`w-11 h-6 rounded-full transition-colors relative ${
-                continuousMode ? 'bg-cyan-500' : 'bg-gray-700'
+                continuousMode ? 'bg-cyan-500' : (isDark ? 'bg-gray-700' : 'bg-gray-300')
               }`}
             >
               <div
@@ -424,13 +455,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-white">Memory</div>
-              <div className="text-xs text-gray-500">Remember conversations</div>
+              <div className={`text-sm ${textPrimary}`}>Memory</div>
+              <div className={`text-xs ${textMuted}`}>Remember conversations</div>
             </div>
             <button
               onClick={() => setMemoryEnabled(!memoryEnabled)}
               className={`w-11 h-6 rounded-full transition-colors relative ${
-                memoryEnabled ? 'bg-cyan-500' : 'bg-gray-700'
+                memoryEnabled ? 'bg-cyan-500' : (isDark ? 'bg-gray-700' : 'bg-gray-300')
               }`}
             >
               <div
@@ -442,11 +473,63 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
 
+        {/* Language Selection */}
+        <div className={`mb-6 border-t ${modalBorder} pt-6`}>
+          <label className={`block text-xs font-medium ${textSecondary} uppercase tracking-wide mb-3`}>
+            Voice Language
+          </label>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as Language)}
+            className={`w-full px-3 py-2.5 rounded-lg ${inputBg} border ${inputBorder} ${textPrimary} focus:border-cyan-500 focus:outline-none text-sm`}
+          >
+            {LANGUAGES.map((lang) => (
+              <option key={lang.id} value={lang.id}>
+                {lang.name}
+              </option>
+            ))}
+          </select>
+          <p className={`mt-1.5 text-xs ${textMuted}`}>
+            TTS voice language (not auto-detected from text)
+          </p>
+        </div>
+
+        {/* Theme Selection */}
+        <div className={`mb-6 border-t ${modalBorder} pt-6`}>
+          <label className={`block text-xs font-medium ${textSecondary} uppercase tracking-wide mb-3`}>
+            Theme
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setTheme('dark')}
+              className={`p-3 rounded-xl border transition-all ${
+                theme === 'dark'
+                  ? 'border-cyan-500 bg-cyan-500/10'
+                  : `${buttonBorder} hover:border-gray-500`
+              }`}
+            >
+              <div className={`font-medium text-sm ${theme === 'dark' ? textPrimary : textSecondary}`}>Dark</div>
+              <div className={`text-xs ${textMuted}`}>Easier on eyes</div>
+            </button>
+            <button
+              onClick={() => setTheme('light')}
+              className={`p-3 rounded-xl border transition-all ${
+                theme === 'light'
+                  ? 'border-cyan-500 bg-cyan-500/10'
+                  : `${buttonBorder} hover:border-gray-500`
+              }`}
+            >
+              <div className={`font-medium text-sm ${theme === 'light' ? textPrimary : textSecondary}`}>Light</div>
+              <div className={`text-xs ${textMuted}`}>Better visibility</div>
+            </button>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
+            className={`flex-1 px-4 py-2.5 rounded-xl border ${buttonBorder} text-sm font-medium ${textSecondary} hover:bg-black/5 transition-colors`}
           >
             Cancel
           </button>

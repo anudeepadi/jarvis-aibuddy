@@ -1,9 +1,13 @@
 'use client'
 
 import { useRef, useEffect, useCallback } from 'react'
-import { useJarvisStore } from '@/store/jarvis-store'
+import { useJarvisStore, Theme } from '@/store/jarvis-store'
 
-export function FibonacciSphere() {
+interface FibonacciSphereProps {
+  theme?: Theme
+}
+
+export function FibonacciSphere({ theme = 'dark' }: FibonacciSphereProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rotationRef = useRef(0)
   const targetScaleRef = useRef(1)
@@ -83,9 +87,13 @@ export function FibonacciSphere() {
 
       rotationRef.current += baseSpeed
 
-      // Color based on state
+      // Color based on state and theme
       const isActiveState = currentState !== 'idle' && currentState !== 'error'
-      const dotColor = isActiveState ? '#00d4d4' : '#e0e0e0'
+      // Dark theme: cyan active, white idle
+      // Light theme: cyan active, dark gray idle
+      const dotColor = isActiveState
+        ? '#00d4d4'
+        : (theme === 'dark' ? '#e0e0e0' : '#404040')
 
       // Project and draw points
       const projected: { x: number; y: number; z: number }[] = []
@@ -139,7 +147,7 @@ export function FibonacciSphere() {
       cancelAnimationFrame(animationId)
       window.removeEventListener('resize', resize)
     }
-  }, [])
+  }, [theme])
 
   return (
     <canvas

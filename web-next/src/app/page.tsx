@@ -24,6 +24,8 @@ function JarvisInterface() {
     state,
     provider,
     ttsProvider,
+    theme,
+    toggleTheme,
     isConnected,
     currentTranscript,
     messages,
@@ -64,7 +66,12 @@ function JarvisInterface() {
       if (e.code === 'Space' && !showSettings && e.target === document.body) {
         e.preventDefault()
         if (isConnected) {
-          currentProvider.endConversation()
+          // If speaking, interrupt instead of ending
+          if (state === 'speaking' && 'interrupt' in currentProvider && typeof (currentProvider as { interrupt?: () => void }).interrupt === 'function') {
+            (currentProvider as { interrupt: () => void }).interrupt()
+          } else {
+            currentProvider.endConversation()
+          }
         } else if (isConfigured) {
           currentProvider.startConversation()
         }
@@ -79,7 +86,7 @@ function JarvisInterface() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isConnected, isConfigured, showSettings, currentProvider])
+  }, [isConnected, isConfigured, showSettings, currentProvider, state])
 
   const handleMainAction = useCallback(() => {
     if (!isConfigured) {
@@ -94,22 +101,35 @@ function JarvisInterface() {
     }
   }, [isConnected, isConfigured, currentProvider])
 
-  // Get display text based on state
+  // Handle sphere click - interrupt if speaking
+  const handleSphereClick = useCallback(() => {
+    if (state === 'speaking' && 'interrupt' in currentProvider && typeof (currentProvider as { interrupt?: () => void }).interrupt === 'function') {
+      (currentProvider as { interrupt: () => void }).interrupt()
+    }
+  }, [state, currentProvider])
+
+  // Get display text based on state - only show transcript when speaking
   const getDisplayText = () => {
-    // Show current transcript first (real-time)
-    if (currentTranscript) {
+    // Only show AI response when actually speaking (not while processing)
+    if (state === 'speaking' && currentTranscript) {
       return currentTranscript
     }
 
-    // Find the last relevant message
-    if (messages.length > 0) {
-      const lastMsg = messages[messages.length - 1]
-      if (state === 'speaking' && lastMsg.role === 'assistant') {
-        return lastMsg.content
+    // Show "Processing..." or user's message while thinking
+    if (state === 'thinking') {
+      // Find the last user message if any
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1]
+        if (lastMsg.role === 'user') {
+          return `"${lastMsg.content}"`
+        }
       }
-      if (state === 'listening' && lastMsg.role === 'assistant') {
-        return lastMsg.content
-      }
+      return 'Processing...'
+    }
+
+    // While listening, show nothing (just visual feedback from sphere)
+    if (state === 'listening') {
+      return ''
     }
 
     return ''
@@ -118,59 +138,100 @@ function JarvisInterface() {
   const displayText = getDisplayText()
   const isAISpeaking = state === 'speaking'
 
+  // Theme-based colors
+  const isDark = theme === 'dark'
+  const bgColor = isDark ? 'bg-[#0d0d0d]' : 'bg-[#f5f5f5]'
+  const textColor = isDark ? 'text-white' : 'text-gray-900'
+  const mutedColor = isDark ? 'text-gray-500' : 'text-gray-400'
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-300'
+  const buttonBg = isDark ? 'bg-[#1a1a1a]' : 'bg-white'
+  const buttonHover = isDark ? 'hover:bg-[#252525]' : 'hover:bg-gray-100'
+
   return (
-    <main className="relative w-full h-screen bg-[#0d0d0d] overflow-hidden">
-      {/* Settings button */}
-      <button
-        onClick={() => setShowSettings(true)}
-        className="absolute top-6 right-6 z-20 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
-        aria-label="Settings"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-      </button>
+    <main className={`relative w-full h-screen ${bgColor} overflow-hidden`}>
+      {/* Top bar with theme toggle and settings */}
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className={`w-10 h-10 flex items-center justify-center rounded-full ${mutedColor} hover:${textColor} hover:bg-white/10 transition-colors`}
+          aria-label="Toggle theme"
+        >
+          {isDark ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
+
+        {/* Settings button */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className={`w-10 h-10 flex items-center justify-center rounded-full ${mutedColor} hover:${textColor} hover:bg-white/10 transition-colors`}
+          aria-label="Settings"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </button>
+      </div>
 
       {/* Transcript above sphere */}
-      <div className="absolute top-[15%] left-1/2 -translate-x-1/2 z-10 w-full max-w-2xl px-6">
+      <div className="absolute top-[8%] left-1/2 -translate-x-1/2 z-10 w-full max-w-2xl px-6">
         {/* State indicator */}
         {isConnected && (
-          <div className="flex justify-center mb-3">
+          <div className="flex justify-center mb-2">
             <span className={`text-xs uppercase tracking-widest ${
-              isAISpeaking ? 'text-cyan-400' : 'text-gray-500'
+              isAISpeaking ? 'text-cyan-400' : mutedColor
             }`}>
-              {state === 'speaking' ? 'Speaking' : state === 'listening' ? 'Listening' : state}
+              {state === 'speaking' ? 'Speaking' : state === 'listening' ? 'Listening' : state === 'thinking' ? 'Thinking' : state}
             </span>
           </div>
         )}
 
-        {/* Transcript text */}
+        {/* Transcript text with max height and scroll */}
         {displayText && (
-          <p className={`text-center leading-relaxed transition-all ${
-            isAISpeaking
-              ? 'text-white text-xl'
-              : 'text-gray-300 text-lg'
-          }`}>
-            {displayText}
+          <div className="max-h-[25vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600">
+            <p className={`text-center leading-relaxed transition-all ${
+              isAISpeaking
+                ? `${textColor} text-lg`
+                : `${isDark ? 'text-gray-300' : 'text-gray-600'} text-base italic`
+            }`}>
+              {displayText}
+            </p>
+          </div>
+        )}
+
+        {/* Interrupt hint when speaking */}
+        {state === 'speaking' && (
+          <p className={`text-center text-xs ${mutedColor} mt-2`}>
+            Tap sphere or press SPACE to interrupt
           </p>
         )}
       </div>
 
-      {/* Sphere */}
+      {/* Sphere - clickable to interrupt */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-[280px] h-[280px] md:w-[350px] md:h-[350px]">
-          <FibonacciSphere />
+        <div
+          className={`w-[280px] h-[280px] md:w-[350px] md:h-[350px] ${state === 'speaking' ? 'cursor-pointer' : ''}`}
+          onClick={handleSphereClick}
+        >
+          <FibonacciSphere theme={theme} />
         </div>
       </div>
 
@@ -178,7 +239,9 @@ function JarvisInterface() {
       <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
         {/* End Session label */}
         {isConnected && (
-          <span className="text-gray-400 text-sm">End Session</span>
+          <span className={`${mutedColor} text-sm`}>
+            {state === 'speaking' ? 'Interrupt or End' : 'End Session'}
+          </span>
         )}
 
         {/* Buttons */}
@@ -186,9 +249,9 @@ function JarvisInterface() {
           {isConnected && (
             <button
               onClick={() => currentProvider.endConversation()}
-              className="w-14 h-14 rounded-full bg-[#1a1a1a] border border-gray-700 flex items-center justify-center hover:bg-[#252525] transition-colors"
+              className={`w-14 h-14 rounded-full ${buttonBg} border ${borderColor} flex items-center justify-center ${buttonHover} transition-colors`}
             >
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-6 h-6 ${textColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -197,13 +260,9 @@ function JarvisInterface() {
           <button
             onClick={handleMainAction}
             disabled={micPermission === 'denied'}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${
-              isConnected
-                ? 'bg-[#1a1a1a] border border-gray-700 hover:bg-[#252525]'
-                : 'bg-[#1a1a1a] border border-gray-700 hover:bg-[#252525]'
-            } ${micPermission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-14 h-14 rounded-full ${buttonBg} border ${borderColor} flex items-center justify-center ${buttonHover} transition-colors ${micPermission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-6 h-6 ${textColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

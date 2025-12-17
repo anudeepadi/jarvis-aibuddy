@@ -33,21 +33,36 @@ html {
   color: #fff;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - light mode */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f5f5f5;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #ddd;
-  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #bbb;
+  background: rgba(128, 128, 128, 0.5);
+}
+
+/* Hide scrollbar for thin scrollbar class */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+}
+
+/* Blinking cursor animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }

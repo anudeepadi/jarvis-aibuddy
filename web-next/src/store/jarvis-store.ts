@@ -7,6 +7,8 @@ export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimme
 export type CartesiaVoice = 'british-butler' | 'confident-british' | 'deep-narrator' | 'professional-male' | 'wise-man' | 'reading-man' | 'professional-female' | 'british-lady' | 'warm-female' | 'commercial-lady'
 export type EdgeVoice = 'british-male' | 'american-male' | 'australian-male' | 'british-female' | 'american-female' | 'australian-female'
 export type TTSProvider = 'cartesia' | 'edge'
+export type Theme = 'dark' | 'light'
+export type Language = 'auto' | 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'ja' | 'ko' | 'zh' | 'ar' | 'ru'
 
 interface Message {
   id: string
@@ -52,6 +54,8 @@ interface JarvisStore {
   setTtsProvider: (provider: TTSProvider) => void
   edgeVoice: EdgeVoice
   setEdgeVoice: (voice: EdgeVoice) => void
+  language: Language
+  setLanguage: (language: Language) => void
 
   // Conversation history
   messages: Message[]
@@ -73,6 +77,11 @@ interface JarvisStore {
   // Permission state
   micPermission: 'prompt' | 'granted' | 'denied'
   setMicPermission: (permission: 'prompt' | 'granted' | 'denied') => void
+
+  // Theme
+  theme: Theme
+  setTheme: (theme: Theme) => void
+  toggleTheme: () => void
 }
 
 export const useJarvisStore = create<JarvisStore>()(
@@ -113,6 +122,8 @@ export const useJarvisStore = create<JarvisStore>()(
       setTtsProvider: (ttsProvider) => set({ ttsProvider }),
       edgeVoice: 'british-male', // Best JARVIS voice
       setEdgeVoice: (edgeVoice) => set({ edgeVoice }),
+      language: 'en', // Default to English, no auto-detection
+      setLanguage: (language) => set({ language }),
 
       // Conversation
       messages: [],
@@ -141,6 +152,11 @@ export const useJarvisStore = create<JarvisStore>()(
       // Permissions
       micPermission: 'prompt',
       setMicPermission: (micPermission) => set({ micPermission }),
+
+      // Theme
+      theme: 'dark',
+      setTheme: (theme) => set({ theme }),
+      toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
     }),
     {
       name: 'jarvis-storage',
@@ -163,6 +179,9 @@ export const useJarvisStore = create<JarvisStore>()(
         cartesiaVoice: state.cartesiaVoice,
         ttsProvider: state.ttsProvider,
         edgeVoice: state.edgeVoice,
+        language: state.language,
+        theme: state.theme,
+        messages: state.messages, // Persist conversation history
       }),
     }
   )
