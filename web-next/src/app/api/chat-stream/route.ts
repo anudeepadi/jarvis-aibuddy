@@ -2,9 +2,19 @@ import { NextRequest } from 'next/server'
 
 const SYSTEM_PROMPT = `You are Jarvis, an intelligent AI assistant inspired by the AI from Iron Man. You are helpful, witty, and concise. Keep responses brief and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or long explanations - speak naturally as if having a conversation.`
 
+interface ConversationMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { message, apiKey, provider = 'groq' } = await request.json()
+    const { message, apiKey, provider = 'groq', conversationHistory = [] } = await request.json() as {
+      message: string
+      apiKey: string
+      provider?: string
+      conversationHistory?: ConversationMessage[]
+    }
 
     if (!message || !apiKey) {
       return new Response(JSON.stringify({ error: 'Missing message or apiKey' }), {
@@ -19,6 +29,12 @@ export async function POST(request: NextRequest) {
 
     const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini'
 
+    // Build messages array with conversation history (last 5 exchanges = 10 messages)
+    const historyMessages = conversationHistory.slice(-10).map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }))
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -29,6 +45,7 @@ export async function POST(request: NextRequest) {
         model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
+          ...historyMessages,
           { role: 'user', content: message }
         ],
         max_tokens: 300,

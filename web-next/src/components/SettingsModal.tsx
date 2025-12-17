@@ -30,8 +30,9 @@ const CARTESIA_VOICES: { id: CartesiaVoice; name: string; description: string }[
   { id: 'british-lady', name: 'British Lady', description: 'Elegant female' },
 ]
 
-const LANGUAGES: { id: Language; name: string }[] = [
+const LANGUAGES: { id: Language; name: string; description?: string }[] = [
   { id: 'en', name: 'English' },
+  { id: 'auto', name: 'Auto-detect', description: 'Detect from text' },
   { id: 'hi', name: 'Hindi' },
   { id: 'es', name: 'Spanish' },
   { id: 'fr', name: 'French' },
@@ -77,6 +78,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setEdgeVoice,
     language,
     setLanguage,
+    wakeWordEnabled,
+    setWakeWordEnabled,
+    picovoiceApiKey,
     theme,
     setTheme,
   } = useJarvisStore()
@@ -90,6 +94,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     groqApiKey,
     cartesiaApiKey,
     mem0ApiKey,
+    picovoiceApiKey,
   })
 
   const handleSave = () => {
@@ -99,6 +104,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setApiKey('groqApiKey', localKeys.groqApiKey)
     setApiKey('cartesiaApiKey', localKeys.cartesiaApiKey)
     setApiKey('mem0ApiKey', localKeys.mem0ApiKey)
+    setApiKey('picovoiceApiKey', localKeys.picovoiceApiKey)
     onClose()
   }
 
@@ -471,6 +477,43 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               />
             </button>
           </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className={`text-sm ${textPrimary}`}>Wake Word</div>
+              <div className={`text-xs ${textMuted}`}>Say "Jarvis" to activate</div>
+            </div>
+            <button
+              onClick={() => setWakeWordEnabled(!wakeWordEnabled)}
+              disabled={!localKeys.picovoiceApiKey}
+              className={`w-11 h-6 rounded-full transition-colors relative ${
+                wakeWordEnabled && localKeys.picovoiceApiKey ? 'bg-cyan-500' : (isDark ? 'bg-gray-700' : 'bg-gray-300')
+              } ${!localKeys.picovoiceApiKey ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  wakeWordEnabled && localKeys.picovoiceApiKey ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          {!localKeys.picovoiceApiKey && (
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Picovoice API Key <span className="text-gray-600">(for wake word)</span>
+              </label>
+              <input
+                type="password"
+                value={localKeys.picovoiceApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, picovoiceApiKey: e.target.value })}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className={`w-full px-3 py-2.5 rounded-lg ${inputBg} border ${inputBorder} ${textPrimary} placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm`}
+              />
+              <p className={`mt-1.5 text-xs ${textMuted}`}>
+                Free at console.picovoice.ai
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Language Selection */}
@@ -490,7 +533,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             ))}
           </select>
           <p className={`mt-1.5 text-xs ${textMuted}`}>
-            TTS voice language (not auto-detected from text)
+            {language === 'auto' ? 'Voice will match detected text language' : 'Fixed voice language regardless of text'}
           </p>
         </div>
 

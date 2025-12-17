@@ -37,7 +37,8 @@ interface JarvisStore {
   groqApiKey: string
   cartesiaApiKey: string
   mem0ApiKey: string
-  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'cartesiaApiKey' | 'mem0ApiKey', value: string) => void
+  picovoiceApiKey: string
+  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'cartesiaApiKey' | 'mem0ApiKey' | 'picovoiceApiKey', value: string) => void
 
   // Settings
   voiceEnabled: boolean
@@ -46,6 +47,8 @@ interface JarvisStore {
   setContinuousMode: (enabled: boolean) => void
   memoryEnabled: boolean
   setMemoryEnabled: (enabled: boolean) => void
+  wakeWordEnabled: boolean
+  setWakeWordEnabled: (enabled: boolean) => void
   openaiVoice: OpenAIVoice
   setOpenaiVoice: (voice: OpenAIVoice) => void
   cartesiaVoice: CartesiaVoice
@@ -82,6 +85,10 @@ interface JarvisStore {
   theme: Theme
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
+
+  // Memory feedback
+  lastMemorySaved: number | null
+  setLastMemorySaved: (timestamp: number | null) => void
 }
 
 export const useJarvisStore = create<JarvisStore>()(
@@ -105,6 +112,7 @@ export const useJarvisStore = create<JarvisStore>()(
       groqApiKey: '',
       cartesiaApiKey: '',
       mem0ApiKey: '',
+      picovoiceApiKey: '',
       setApiKey: (key, value) => set({ [key]: value }),
 
       // Settings
@@ -114,6 +122,8 @@ export const useJarvisStore = create<JarvisStore>()(
       setContinuousMode: (continuousMode) => set({ continuousMode }),
       memoryEnabled: true,
       setMemoryEnabled: (memoryEnabled) => set({ memoryEnabled }),
+      wakeWordEnabled: false, // Disabled by default, requires Picovoice API key
+      setWakeWordEnabled: (wakeWordEnabled) => set({ wakeWordEnabled }),
       openaiVoice: 'onyx',
       setOpenaiVoice: (openaiVoice) => set({ openaiVoice }),
       cartesiaVoice: 'british-butler',
@@ -157,6 +167,10 @@ export const useJarvisStore = create<JarvisStore>()(
       theme: 'dark',
       setTheme: (theme) => set({ theme }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+
+      // Memory feedback
+      lastMemorySaved: null,
+      setLastMemorySaved: (lastMemorySaved) => set({ lastMemorySaved }),
     }),
     {
       name: 'jarvis-storage',
@@ -171,10 +185,12 @@ export const useJarvisStore = create<JarvisStore>()(
         groqApiKey: state.groqApiKey,
         cartesiaApiKey: state.cartesiaApiKey,
         mem0ApiKey: state.mem0ApiKey,
+        picovoiceApiKey: state.picovoiceApiKey,
         provider: state.provider,
         voiceEnabled: state.voiceEnabled,
         continuousMode: state.continuousMode,
         memoryEnabled: state.memoryEnabled,
+        wakeWordEnabled: state.wakeWordEnabled,
         openaiVoice: state.openaiVoice,
         cartesiaVoice: state.cartesiaVoice,
         ttsProvider: state.ttsProvider,

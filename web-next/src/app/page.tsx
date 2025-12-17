@@ -6,6 +6,7 @@ import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
 import { useGroqVoice } from '@/hooks/useGroqVoice'
 import { useCartesiaStream } from '@/hooks/useCartesiaStream'
+import { useWakeWord } from '@/hooks/useWakeWord'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
 
@@ -34,6 +35,10 @@ function JarvisInterface() {
     openaiApiKey,
     groqApiKey,
     cartesiaApiKey,
+    lastMemorySaved,
+    memoryEnabled,
+    wakeWordEnabled,
+    picovoiceApiKey,
   } = useJarvisStore()
 
   const elevenLabs = useElevenLabs()
@@ -47,6 +52,16 @@ function JarvisInterface() {
     provider === 'groq' ? groqVoice :
     provider === 'elevenlabs' ? elevenLabs :
     openAI
+
+  // Wake word handler - starts conversation when "Jarvis" is detected
+  const handleWakeWordDetected = useCallback(() => {
+    if (!isConnected && currentProvider) {
+      currentProvider.startConversation()
+    }
+  }, [isConnected, currentProvider])
+
+  // Wake word detection hook
+  const { isListening: isWakeWordListening } = useWakeWord(handleWakeWordDetected)
 
   // Cartesia provider: needs Groq API key, and Cartesia key only if using Cartesia TTS (not Edge)
   const isConfigured =
@@ -115,7 +130,7 @@ function JarvisInterface() {
       return currentTranscript
     }
 
-    // Show "Processing..." or user's message while thinking
+    // Show user's message while thinking (typing indicator shown separately)
     if (state === 'thinking') {
       // Find the last user message if any
       if (messages.length > 0) {
@@ -124,7 +139,7 @@ function JarvisInterface() {
           return `"${lastMsg.content}"`
         }
       }
-      return 'Processing...'
+      return ''
     }
 
     // While listening, show nothing (just visual feedback from sphere)
@@ -149,6 +164,31 @@ function JarvisInterface() {
 
   return (
     <main className={`relative w-full h-screen ${bgColor} overflow-hidden`}>
+      {/* Status indicators (top left) */}
+      <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
+        {/* Memory saved indicator */}
+        {lastMemorySaved && memoryEnabled && (
+          <div className="flex items-center gap-2 animate-fade-in">
+            <span className={`text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'} flex items-center gap-1`}>
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Remembered
+            </span>
+          </div>
+        )}
+
+        {/* Wake word listening indicator */}
+        {isWakeWordListening && wakeWordEnabled && !isConnected && (
+          <div className="flex items-center gap-2">
+            <span className={`text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} flex items-center gap-1`}>
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              Listening for "Jarvis"
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Top bar with theme toggle and settings */}
       <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
         {/* Theme toggle */}
@@ -214,6 +254,15 @@ function JarvisInterface() {
             }`}>
               {displayText}
             </p>
+          </div>
+        )}
+
+        {/* Typing indicator when thinking */}
+        {state === 'thinking' && (
+          <div className="flex justify-center items-center gap-1 mt-3">
+            <span className={`w-2 h-2 rounded-full ${isDark ? 'bg-cyan-400' : 'bg-cyan-500'} animate-bounce`} style={{ animationDelay: '0ms' }} />
+            <span className={`w-2 h-2 rounded-full ${isDark ? 'bg-cyan-400' : 'bg-cyan-500'} animate-bounce`} style={{ animationDelay: '150ms' }} />
+            <span className={`w-2 h-2 rounded-full ${isDark ? 'bg-cyan-400' : 'bg-cyan-500'} animate-bounce`} style={{ animationDelay: '300ms' }} />
           </div>
         )}
 

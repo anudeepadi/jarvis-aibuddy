@@ -52,12 +52,14 @@ export function useCartesiaStream() {
     mem0ApiKey,
     memoryEnabled,
     language,
+    messages,
     setState,
     setAudioLevel,
     setCurrentTranscript,
     addMessage,
     setIsConnected,
     setMicPermission,
+    setLastMemorySaved,
     continuousMode,
   } = useJarvisStore()
 
@@ -348,7 +350,7 @@ export function useCartesiaStream() {
     if (!memoryEnabled || !mem0ApiKey) return
 
     try {
-      await fetch('https://api.mem0.ai/v1/memories/', {
+      const response = await fetch('https://api.mem0.ai/v1/memories/', {
         method: 'POST',
         headers: {
           'Authorization': `Token ${mem0ApiKey}`,
@@ -362,10 +364,15 @@ export function useCartesiaStream() {
           user_id: 'jarvis-user',
         }),
       })
+      if (response.ok) {
+        setLastMemorySaved(Date.now())
+        // Auto-clear after 3 seconds
+        setTimeout(() => setLastMemorySaved(null), 3000)
+      }
     } catch (error) {
       console.warn('Memory save failed:', error)
     }
-  }, [memoryEnabled, mem0ApiKey])
+  }, [memoryEnabled, mem0ApiKey, setLastMemorySaved])
 
   // Stream chat response and generate TTS in parallel (with correct ordering)
   const streamChatWithTTS = useCallback(async (message: string, memoryContext: string): Promise<string> => {
@@ -376,6 +383,12 @@ export function useCartesiaStream() {
     nextPlayIndexRef.current = 0
     let sentenceIndex = 0
 
+    // Get conversation history for context (last 10 messages = 5 exchanges)
+    const conversationHistory = messages.slice(-10).map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }))
+
     const response = await fetch('/api/chat-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -383,6 +396,7 @@ export function useCartesiaStream() {
         message: memoryContext ? `${message}\n\n[Context: ${memoryContext}]` : message,
         apiKey: groqApiKey,
         provider: 'groq',
+        conversationHistory,
       }),
       signal: abortControllerRef.current.signal,
     })
@@ -475,7 +489,7 @@ export function useCartesiaStream() {
 
     await Promise.all(ttsPromises)
     return fullText
-  }, [groqApiKey, getTTSAudio, queueAudioWithIndex, startTypewriter, stopTypewriter, setCurrentTranscript])
+  }, [groqApiKey, getTTSAudio, queueAudioWithIndex, startTypewriter, stopTypewriter, setCurrentTranscript, messages])
 
   // Process recorded audio
   const processAudio = useCallback(async () => {
@@ -608,9 +622,15 @@ export function useCartesiaStream() {
           setAudioLevel(normalizedLevel)
         }
 
-        // Improved silence detection
+        // Improved silence detection with adaptive timeout
         const SPEECH_THRESHOLD = 0.02
-        const SILENCE_DURATION = 800 // ms - faster detection
+
+        // Adaptive silence duration based on speech length
+        const getAdaptiveSilenceDuration = (speechDurationMs: number): number => {
+          if (speechDurationMs < 2000) return 500  // Quick command - fast cutoff
+          if (speechDurationMs < 5000) return 800  // Normal speech
+          return 1200 // Long speech - allow pauses
+        }
 
         if (currentState === 'listening' && isRecordingRef.current && !processingRef.current) {
           if (normalizedLevel >= SPEECH_THRESHOLD) {
@@ -625,8 +645,11 @@ export function useCartesiaStream() {
               silenceTimeoutRef.current = null
             }
           } else if (speechDetectedRef.current) {
-            // Silence after speech - start timer
+            // Silence after speech - start timer with adaptive duration
             if (!silenceTimeoutRef.current) {
+              const currentSpeechDuration = Date.now() - speechStartTimeRef.current
+              const silenceDuration = getAdaptiveSilenceDuration(currentSpeechDuration)
+
               silenceTimeoutRef.current = setTimeout(() => {
                 const speechDuration = Date.now() - speechStartTimeRef.current
                 // Only process if speech was longer than 300ms
@@ -634,7 +657,7 @@ export function useCartesiaStream() {
                   mediaRecorderRef.current.stop()
                 }
                 silenceTimeoutRef.current = null
-              }, SILENCE_DURATION)
+              }, silenceDuration)
             }
           }
           lastAudioLevelRef.current = normalizedLevel
