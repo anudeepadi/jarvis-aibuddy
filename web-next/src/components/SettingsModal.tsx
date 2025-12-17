@@ -15,6 +15,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     elevenLabsApiKey,
     elevenLabsAgentId,
     openaiApiKey,
+    groqApiKey,
     mem0ApiKey,
     setApiKey,
     voiceEnabled,
@@ -29,6 +30,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     elevenLabsApiKey,
     elevenLabsAgentId,
     openaiApiKey,
+    groqApiKey,
     mem0ApiKey,
   })
 
@@ -36,6 +38,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setApiKey('elevenLabsApiKey', localKeys.elevenLabsApiKey)
     setApiKey('elevenLabsAgentId', localKeys.elevenLabsAgentId)
     setApiKey('openaiApiKey', localKeys.openaiApiKey)
+    setApiKey('groqApiKey', localKeys.groqApiKey)
     setApiKey('mem0ApiKey', localKeys.mem0ApiKey)
     onClose()
   }
@@ -70,7 +73,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
             Provider
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setProvider('groq')}
+              className={`p-3 rounded-xl border transition-all ${
+                provider === 'groq'
+                  ? 'border-cyan-500 bg-cyan-500/10 text-white'
+                  : 'border-gray-700 hover:border-gray-600 text-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm">Groq</div>
+              <div className="text-xs text-gray-500">Fast & Free TTS</div>
+            </button>
             <button
               onClick={() => setProvider('elevenlabs')}
               className={`p-3 rounded-xl border transition-all ${
@@ -80,7 +94,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               }`}
             >
               <div className="font-medium text-sm">ElevenLabs</div>
-              <div className="text-xs text-gray-500">Conversational AI</div>
+              <div className="text-xs text-gray-500">Best Quality</div>
             </button>
             <button
               onClick={() => setProvider('openai')}
@@ -91,10 +105,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               }`}
             >
               <div className="font-medium text-sm">OpenAI</div>
-              <div className="text-xs text-gray-500">GPT + Web Speech</div>
+              <div className="text-xs text-gray-500">GPT + Speech</div>
             </button>
           </div>
         </div>
+
+        {/* Groq Settings */}
+        {provider === 'groq' && (
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Groq API Key
+              </label>
+              <input
+                type="password"
+                value={localKeys.groqApiKey}
+                onChange={(e) => setLocalKeys({ ...localKeys, groqApiKey: e.target.value })}
+                placeholder="gsk_xxxxxxxxxx"
+                className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                Free tier: Whisper STT + Llama 70B. Get key at console.groq.com
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ElevenLabs Settings */}
         {provider === 'elevenlabs' && (

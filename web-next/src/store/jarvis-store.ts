@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type ConversationState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error'
-export type AIProvider = 'elevenlabs' | 'openai'
+export type AIProvider = 'elevenlabs' | 'openai' | 'groq'
 
 interface Message {
   id: string
@@ -28,8 +28,9 @@ interface JarvisStore {
   elevenLabsApiKey: string
   elevenLabsAgentId: string
   openaiApiKey: string
+  groqApiKey: string
   mem0ApiKey: string
-  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'mem0ApiKey', value: string) => void
+  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'mem0ApiKey', value: string) => void
 
   // Settings
   voiceEnabled: boolean
@@ -79,6 +80,7 @@ export const useJarvisStore = create<JarvisStore>()(
       elevenLabsApiKey: '',
       elevenLabsAgentId: '',
       openaiApiKey: '',
+      groqApiKey: '',
       mem0ApiKey: '',
       setApiKey: (key, value) => set({ [key]: value }),
 
@@ -128,6 +130,7 @@ export const useJarvisStore = create<JarvisStore>()(
         elevenLabsApiKey: state.elevenLabsApiKey,
         elevenLabsAgentId: state.elevenLabsAgentId,
         openaiApiKey: state.openaiApiKey,
+        groqApiKey: state.groqApiKey,
         mem0ApiKey: state.mem0ApiKey,
         provider: state.provider,
         voiceEnabled: state.voiceEnabled,

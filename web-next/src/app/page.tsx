@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useJarvisStore } from '@/store/jarvis-store'
 import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
+import { useGroqVoice } from '@/hooks/useGroqVoice'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
 
@@ -27,13 +28,15 @@ function JarvisInterface() {
     micPermission,
     elevenLabsAgentId,
     openaiApiKey,
+    groqApiKey,
   } = useJarvisStore()
 
   const elevenLabs = useElevenLabs()
   const openAI = useOpenAI()
+  const groqVoice = useGroqVoice()
 
-  const currentProvider = provider === 'elevenlabs' ? elevenLabs : openAI
-  const isConfigured = provider === 'elevenlabs' ? !!elevenLabsAgentId : !!openaiApiKey
+  const currentProvider = provider === 'groq' ? groqVoice : provider === 'elevenlabs' ? elevenLabs : openAI
+  const isConfigured = provider === 'groq' ? !!groqApiKey : provider === 'elevenlabs' ? !!elevenLabsAgentId : !!openaiApiKey
 
   useEffect(() => {
     if (!isConfigured) {
