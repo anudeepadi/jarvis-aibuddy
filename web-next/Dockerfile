@@ -34,12 +34,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install Python and edge-tts for TTS functionality
-RUN apk add --no-cache python3 py3-pip
+# Install Python, edge-tts, and OpenSSL for TTS and Prisma
+RUN apk add --no-cache python3 py3-pip openssl
 RUN pip3 install edge-tts --break-system-packages
-
-# Install Prisma CLI v5 for migrations
-RUN npm install -g prisma@5
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
@@ -49,10 +46,15 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+
+# Install prisma CLI locally for migrations
+RUN npm install prisma@5 --prefix /app
 
 # Set correct permissions for prerender cache
 RUN mkdir .next
-RUN chown nextjs:nodejs .next
+RUN chown -R nextjs:nodejs .next node_modules prisma
 
 # Copy standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -66,4 +68,4 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Run migrations and start server
-CMD ["sh", "-c", "prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node server.js"]
