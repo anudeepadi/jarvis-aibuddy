@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Cartesia Sonic voices - https://docs.cartesia.ai/build-with-cartesia/voices
+// Cartesia Sonic voices - verified IDs from https://developer.signalwire.com/voice/tts/cartesia/
 const CARTESIA_VOICES: Record<string, string> = {
-  // Male voices
-  'british-butler': '63ff761e-74d5-4127-9e08-7976fe68070e', // Professional British male
-  'confident-british': 'ee7ea9f8-c0c1-498c-9f62-ada6c02c0c47', // Confident British male
-  'deep-narrator': '3b554273-4299-48b9-9aaf-eefd438e3941', // Deep male narrator
-  'professional-male': 'e13cae5c-ec59-4f71-b0a6-266df3c9bb8e', // Professional male
+  // Male voices (best for JARVIS)
+  'british-butler': '95856005-0332-41b0-935f-352e296aa0df', // Classy British Man
+  'confident-british': '63ff761f-c1e8-414b-b969-d1833d1c870c', // Confident British Man
+  'deep-narrator': 'd46abd1d-2d02-43e8-819f-51fb652c1c61', // Newsman - deep authoritative
+  'professional-male': 'a167e0f3-df7e-4d52-a9c3-f949145efdab', // Customer Support Man
+  'wise-man': 'b043dea0-a007-4bbe-a708-769dc0d0c569', // Wise Man
+  'reading-man': 'f146dcec-e481-45be-8ad2-96e1e40e7f32', // Reading Man
   // Female voices
-  'professional-female': 'eda5bbff-1ff1-4c99-b7b3-0dc8a9f9b4e4', // Professional female
-  'warm-female': '21b81c14-f85b-436d-aff5-43f2e788ecf8', // Warm female narrator
+  'professional-female': '248be419-c632-4f23-adf1-5324ed7dbf1d', // Professional Woman
+  'british-lady': '79a125e8-cd45-4c13-8a67-188112f4dd22', // British Lady
+  'warm-female': '21b81c14-f85b-436d-aff5-43f2e788ecf8', // Laidback Woman
+  'commercial-lady': 'c2ac25f9-ecc4-4f56-9095-651354df60c0', // Commercial Lady
 }
 
 export async function POST(request: NextRequest) {

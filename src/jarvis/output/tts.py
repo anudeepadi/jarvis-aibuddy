@@ -516,11 +516,179 @@ class ChatterboxTTS:
         return self._last_spoken_text
 
 
-def create_tts_engine(engine: str = "system", enabled: bool = True, voice: Optional[str] = None, 
+class ElevenLabsTTS:
+    """High-quality TTS using ElevenLabs API."""
+
+    def __init__(self, enabled: bool = True, voice: Optional[str] = None, rate: Optional[int] = None,
+                 api_key: Optional[str] = None, model: str = "eleven_turbo_v2_5") -> None:
+        self.enabled = enabled
+        self.voice = voice or "Rachel"  # Default ElevenLabs voice
+        self.rate = rate
+        self.api_key = api_key or os.environ.get("ELEVENLABS_API_KEY")
+        self.model = model
+
+        # Threading and queue setup
+        self._q: queue.Queue[str] = queue.Queue()
+        self._thread: Optional[threading.Thread] = None
+        self._stop = threading.Event()
+        self._is_speaking = threading.Event()
+        self._last_spoken_text: str = ""
+        self._completion_callback: Optional[Callable[[], None]] = None
+        self._should_interrupt = threading.Event()
+
+        # ElevenLabs client
+        self._client = None
+        self._client_error = None
+        self._initialized = False
+        self._init_lock = threading.Lock()
+
+    def _ensure_initialized(self) -> None:
+        """Initialize ElevenLabs client only once."""
+        if self._initialized or not self.enabled:
+            return
+        with self._init_lock:
+            if self._initialized:
+                return
+            try:
+                if not self.api_key:
+                    self._client_error = "ELEVENLABS_API_KEY not set"
+                    warnings.warn(f"ElevenLabs TTS: {self._client_error}")
+                else:
+                    from elevenlabs.client import ElevenLabs
+                    self._client = ElevenLabs(api_key=self.api_key)
+                    print("✅ [TTS] ElevenLabs voice synthesis ready!", flush=True)
+            except Exception as e:
+                self._client_error = str(e)
+                warnings.warn(f"ElevenLabs TTS initialization failed: {e}")
+            self._initialized = True
+
+    def _ensure_client(self) -> bool:
+        """Check if ElevenLabs client is available."""
+        self._ensure_initialized()
+        return self._client is not None
+
+    def start(self) -> None:
+        if not self.enabled or self._thread is not None:
+            return
+        self._ensure_initialized()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is None:
+            return
+        try:
+            self.interrupt()
+        except Exception:
+            pass
+        self._stop.set()
+        try:
+            self._q.put_nowait("")
+        except Exception:
+            pass
+        self._thread.join(timeout=2.0)
+        self._thread = None
+        self._stop.clear()
+
+    def speak(self, text: str, completion_callback: Optional[Callable[[], None]] = None) -> None:
+        if not self.enabled or not text.strip():
+            return
+        if self._thread is None:
+            self.start()
+        self._completion_callback = completion_callback
+        try:
+            self._q.put_nowait(text)
+        except Exception:
+            pass
+
+    def interrupt(self) -> None:
+        """Stop current speech immediately"""
+        self._should_interrupt.set()
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                text = self._q.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            if not text:
+                continue
+            try:
+                self._speak_once(text)
+            except Exception:
+                continue
+
+    def _speak_once(self, text: str) -> None:
+        self._is_speaking.set()
+        self._last_spoken_text = text
+        self._should_interrupt.clear()
+        interrupted = False
+
+        try:
+            if not self._ensure_client():
+                warnings.warn("ElevenLabs TTS not available, skipping speech")
+                return
+
+            import pygame
+            import io
+
+            # Generate audio using ElevenLabs
+            audio_generator = self._client.text_to_speech.convert(
+                text=text,
+                voice_id=self.voice,
+                model_id=self.model,
+                output_format="mp3_44100_128"
+            )
+
+            # Collect audio chunks
+            audio_data = b"".join(audio_generator)
+
+            # Play using pygame
+            pygame.mixer.init()
+            pygame.mixer.music.load(io.BytesIO(audio_data))
+            pygame.mixer.music.play()
+
+            # Wait for playback or interruption
+            while pygame.mixer.music.get_busy():
+                if self._should_interrupt.is_set():
+                    pygame.mixer.music.stop()
+                    interrupted = True
+                    break
+                pygame.time.wait(100)
+
+            pygame.mixer.quit()
+
+        except Exception as e:
+            warnings.warn(f"ElevenLabs TTS error: {e}")
+        finally:
+            self._is_speaking.clear()
+            if self._completion_callback is not None and not interrupted:
+                try:
+                    self._completion_callback()
+                except Exception:
+                    pass
+                self._completion_callback = None
+
+    def is_speaking(self) -> bool:
+        return self._is_speaking.is_set()
+
+    def get_last_spoken_text(self) -> str:
+        return self._last_spoken_text
+
+
+def create_tts_engine(engine: str = "system", enabled: bool = True, voice: Optional[str] = None,
                       rate: Optional[int] = None, device: str = "cuda", audio_prompt_path: Optional[str] = None,
-                      exaggeration: float = 0.5, cfg_weight: float = 0.5):
-    """Factory function to create the appropriate TTS engine."""
-    if engine.lower() == "chatterbox":
+                      exaggeration: float = 0.5, cfg_weight: float = 0.5, api_key: Optional[str] = None):
+    """Factory function to create the appropriate TTS engine.
+
+    Supported engines:
+    - "system": Native OS TTS (macOS say, Windows SAPI, Linux espeak)
+    - "chatterbox": Resemble AI's Chatterbox model (local, GPU recommended)
+    - "elevenlabs": ElevenLabs cloud API (requires ELEVENLABS_API_KEY)
+    """
+    engine_lower = engine.lower()
+
+    if engine_lower == "chatterbox":
         return ChatterboxTTS(
             enabled=enabled,
             voice=voice,
@@ -529,6 +697,13 @@ def create_tts_engine(engine: str = "system", enabled: bool = True, voice: Optio
             audio_prompt_path=audio_prompt_path,
             exaggeration=exaggeration,
             cfg_weight=cfg_weight
+        )
+    elif engine_lower == "elevenlabs":
+        return ElevenLabsTTS(
+            enabled=enabled,
+            voice=voice,
+            rate=rate,
+            api_key=api_key
         )
     else:
         # Default to system TTS

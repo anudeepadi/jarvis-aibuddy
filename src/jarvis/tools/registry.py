@@ -16,6 +16,9 @@ from .builtin.recall_conversation import RecallConversationTool
 from .builtin.nutrition.log_meal import LogMealTool
 from .builtin.nutrition.fetch_meals import FetchMealsTool
 from .builtin.nutrition.delete_meal import DeleteMealTool
+from .builtin.search_documents import SearchDocumentsTool
+from .builtin.search_memories import SearchMemoriesTool
+from .builtin.index_documents import IndexDocumentsTool
 from .types import ToolExecutionResult
 from ..config import Settings
 from .external.mcp_client import MCPClient
@@ -33,6 +36,9 @@ BUILTIN_TOOLS = {
     "logMeal": LogMealTool(),
     "fetchMeals": FetchMealsTool(),
     "deleteMeal": DeleteMealTool(),
+    "searchDocuments": SearchDocumentsTool(),
+    "searchMemories": SearchMemoriesTool(),
+    "indexDocuments": IndexDocumentsTool(),
 }
 
 

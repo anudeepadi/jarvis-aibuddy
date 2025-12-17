@@ -8,6 +8,21 @@ from ..llm import call_llm_direct
 from .embeddings import get_embedding
 from ..debug import debug_log
 
+# Mem0 integration (lazy loaded)
+_mem0_provider = None
+
+
+def _get_mem0_provider():
+    """Get Mem0 provider if available and enabled."""
+    global _mem0_provider
+    if _mem0_provider is None:
+        try:
+            from .mem0_provider import get_mem0_provider
+            _mem0_provider = get_mem0_provider()
+        except ImportError:
+            return None
+    return _mem0_provider if _mem0_provider.is_available() else None
+
 
 def _filter_contexts_by_time(
     contexts: List[str], 
@@ -280,9 +295,25 @@ def update_daily_conversation_summary(
             vec = get_embedding(text_for_embedding, ollama_base_url, ollama_embed_model, timeout_sec=15.0)  # Use shorter timeout for embeddings
             if vec is not None:
                 db.upsert_summary_embedding(summary_id, vec)
-        
+
+        # Sync to Mem0 cloud memory if available
+        mem0 = _get_mem0_provider()
+        if mem0:
+            try:
+                # Store conversation as memory for long-term retrieval
+                mem0_content = f"[{today}] {summary}"
+                if topics:
+                    mem0_content += f" (Topics: {topics})"
+                mem0.add_memory(
+                    content=mem0_content,
+                    metadata={"date": today, "topics": topics, "source": source_app}
+                )
+                debug_log(f"Synced summary to Mem0 cloud memory", "memory")
+            except Exception as e:
+                debug_log(f"Failed to sync to Mem0: {e}", "memory")
+
         return summary_id
-        
+
     except Exception:
         return None
 
@@ -392,11 +423,12 @@ def search_conversation_memory(
     timeout_sec: float = 60.0,
     voice_debug: bool = False,
     max_results: int = 15,
+    include_mem0: bool = True,
 ) -> List[str]:
     """
     Search conversation memory with a natural language query or phrase.
     This is optimized for direct user queries and tool usage.
-    
+
     Args:
         db: Database instance
         search_query: Natural language query or phrase to search for
@@ -407,12 +439,25 @@ def search_conversation_memory(
         timeout_sec: Timeout for embedding generation
         voice_debug: Enable debug output
         max_results: Maximum number of results to return (default: 15)
-        
+        include_mem0: Whether to also search Mem0 cloud memory (default: True)
+
     Returns:
         List of formatted context strings (limited to max_results)
     """
     contexts = []
-    
+
+    # Search Mem0 cloud memory first if available
+    if include_mem0 and search_query and search_query.strip():
+        mem0 = _get_mem0_provider()
+        if mem0:
+            try:
+                mem0_results = mem0.get_formatted_context(search_query, limit=max_results // 2)
+                if mem0_results:
+                    contexts.extend(mem0_results)
+                    debug_log(f"Found {len(mem0_results)} results from Mem0 cloud memory", "memory")
+            except Exception as e:
+                debug_log(f"Mem0 search failed: {e}", "memory")
+
     try:
         if search_query and search_query.strip() and ollama_base_url and ollama_embed_model:
             # Primary: Use vector search for semantic similarity

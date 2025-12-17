@@ -18,10 +18,21 @@ class Settings:
     db_path: str
     sqlite_vss_path: str | None
 
-    # LLM & AI Models
+    # LLM Provider Selection
+    llm_provider: str  # "ollama", "gemini", or "openai"
+
+    # LLM & AI Models (Ollama)
     ollama_base_url: str
     ollama_embed_model: str
     ollama_chat_model: str
+
+    # LLM & AI Models (Gemini)
+    gemini_model: str
+
+    # LLM & AI Models (OpenAI)
+    openai_model: str
+
+    # LLM Timeouts
     llm_chat_timeout_sec: float
     llm_tools_timeout_sec: float
     llm_embedding_timeout_sec: float
@@ -90,6 +101,10 @@ class Settings:
     dialogue_memory_timeout: float
     memory_enrichment_max_results: int
     memory_search_max_results: int
+
+    # Mem0 Cloud Memory
+    mem0_enabled: bool
+    mem0_user_id: str
 
     # Agentic Loop
     agentic_max_turns: int
@@ -164,10 +179,21 @@ def get_default_config() -> Dict[str, Any]:
         "db_path": _default_db_path(),
         "sqlite_vss_path": None,
 
-        # LLM & AI Models
+        # LLM Provider Selection
+        "llm_provider": "ollama",  # "ollama" or "gemini"
+
+        # LLM & AI Models (Ollama)
         "ollama_base_url": "http://127.0.0.1:11434",
         "ollama_embed_model": "nomic-embed-text",
         "ollama_chat_model": "gpt-oss:20b",
+
+        # LLM & AI Models (Gemini)
+        "gemini_model": "gemini-2.5-flash",
+
+        # LLM & AI Models (OpenAI)
+        "openai_model": "gpt-4o-mini",
+
+        # LLM Timeouts
         "llm_chat_timeout_sec": 180.0,
         "llm_tools_timeout_sec": 300.0,
         "llm_embedding_timeout_sec": 60.0,
@@ -240,6 +266,10 @@ def get_default_config() -> Dict[str, Any]:
         "memory_enrichment_max_results": 10,
         "memory_search_max_results": 15,
 
+        # Mem0 Cloud Memory
+        "mem0_enabled": True,  # Enable cloud memory if MEM0_API_KEY is set
+        "mem0_user_id": "jarvis_user",  # User ID for memory storage
+
         # Agentic Loop
         "agentic_max_turns": 8,
 
@@ -302,9 +332,15 @@ def load_settings() -> Settings:
     sqlite_vss_path = merged.get("sqlite_vss_path")
     allowlist_bundles = _ensure_list(merged.get("allowlist_bundles"))
 
+    # LLM Provider settings
+    llm_provider = str(merged.get("llm_provider", "ollama")).lower()
+    if llm_provider not in ("ollama", "gemini"):
+        llm_provider = "ollama"
     ollama_base_url = str(merged.get("ollama_base_url"))
     ollama_embed_model = str(merged.get("ollama_embed_model"))
     ollama_chat_model = str(merged.get("ollama_chat_model"))
+    gemini_model = str(merged.get("gemini_model", "gemini-2.5-flash"))
+    openai_model = str(merged.get("openai_model", "gpt-4o-mini"))
     use_stdin = bool(merged.get("use_stdin", False))
     active_profiles = _ensure_list(merged.get("active_profiles"))
     tts_enabled = bool(merged.get("tts_enabled", True))
@@ -353,6 +389,8 @@ def load_settings() -> Settings:
     dialogue_memory_timeout = float(merged.get("dialogue_memory_timeout", 300.0))
     memory_enrichment_max_results = int(merged.get("memory_enrichment_max_results", 10))
     memory_search_max_results = int(merged.get("memory_search_max_results", 15))
+    mem0_enabled = bool(merged.get("mem0_enabled", True))
+    mem0_user_id = str(merged.get("mem0_user_id", "jarvis_user"))
     agentic_max_turns = int(merged.get("agentic_max_turns", 8))
     location_enabled = bool(merged.get("location_enabled", True))
     location_cache_minutes = int(merged.get("location_cache_minutes", 60))
@@ -375,10 +413,21 @@ def load_settings() -> Settings:
         db_path=db_path,
         sqlite_vss_path=sqlite_vss_path,
 
-        # LLM & AI Models
+        # LLM Provider Selection
+        llm_provider=llm_provider,
+
+        # LLM & AI Models (Ollama)
         ollama_base_url=ollama_base_url,
         ollama_embed_model=ollama_embed_model,
         ollama_chat_model=ollama_chat_model,
+
+        # LLM & AI Models (Gemini)
+        gemini_model=gemini_model,
+
+        # LLM & AI Models (OpenAI)
+        openai_model=openai_model,
+
+        # LLM Timeouts
         llm_chat_timeout_sec=llm_chat_timeout_sec,
         llm_tools_timeout_sec=llm_tools_timeout_sec,
         llm_embedding_timeout_sec=llm_embedding_timeout_sec,
@@ -445,6 +494,11 @@ def load_settings() -> Settings:
         dialogue_memory_timeout=dialogue_memory_timeout,
         memory_enrichment_max_results=memory_enrichment_max_results,
         memory_search_max_results=memory_search_max_results,
+
+        # Mem0 Cloud Memory
+        mem0_enabled=mem0_enabled,
+        mem0_user_id=mem0_user_id,
+
         agentic_max_turns=agentic_max_turns,
 
         # Location Services

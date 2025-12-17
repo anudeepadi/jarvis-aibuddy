@@ -4,7 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 export type ConversationState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error'
 export type AIProvider = 'elevenlabs' | 'openai' | 'groq' | 'cartesia'
 export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
-export type CartesiaVoice = 'british-butler' | 'confident-british' | 'deep-narrator' | 'professional-male' | 'professional-female' | 'warm-female'
+export type CartesiaVoice = 'british-butler' | 'confident-british' | 'deep-narrator' | 'professional-male' | 'wise-man' | 'reading-man' | 'professional-female' | 'british-lady' | 'warm-female' | 'commercial-lady'
 
 interface Message {
   id: string

@@ -13,12 +13,12 @@ const OPENAI_VOICES: { id: OpenAIVoice; name: string; description: string }[] = 
 ]
 
 const CARTESIA_VOICES: { id: CartesiaVoice; name: string; description: string }[] = [
-  { id: 'british-butler', name: 'British Butler', description: 'Professional British' },
+  { id: 'british-butler', name: 'Classy British', description: 'Refined & elegant' },
   { id: 'confident-british', name: 'Confident', description: 'Assertive British' },
-  { id: 'deep-narrator', name: 'Deep Narrator', description: 'Deep male voice' },
-  { id: 'professional-male', name: 'Professional', description: 'Business male' },
-  { id: 'professional-female', name: 'Pro Female', description: 'Business female' },
-  { id: 'warm-female', name: 'Warm Female', description: 'Friendly narrator' },
+  { id: 'deep-narrator', name: 'Newsman', description: 'Deep authoritative' },
+  { id: 'professional-male', name: 'Support Man', description: 'Helpful & clear' },
+  { id: 'wise-man', name: 'Wise Man', description: 'Calm & thoughtful' },
+  { id: 'british-lady', name: 'British Lady', description: 'Elegant female' },
 ]
 
 interface SettingsModalProps {
