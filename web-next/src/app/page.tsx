@@ -6,7 +6,6 @@ import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
 import { useGroqVoice } from '@/hooks/useGroqVoice'
 import { useCartesiaStream } from '@/hooks/useCartesiaStream'
-import { useWakeWord } from '@/hooks/useWakeWord'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
 
@@ -37,8 +36,6 @@ function JarvisInterface() {
     cartesiaApiKey,
     lastMemorySaved,
     memoryEnabled,
-    wakeWordEnabled,
-    picovoiceApiKey,
   } = useJarvisStore()
 
   const elevenLabs = useElevenLabs()
@@ -52,16 +49,6 @@ function JarvisInterface() {
     provider === 'groq' ? groqVoice :
     provider === 'elevenlabs' ? elevenLabs :
     openAI
-
-  // Wake word handler - starts conversation when "Jarvis" is detected
-  const handleWakeWordDetected = useCallback(() => {
-    if (!isConnected && currentProvider) {
-      currentProvider.startConversation()
-    }
-  }, [isConnected, currentProvider])
-
-  // Wake word detection hook
-  const { isListening: isWakeWordListening } = useWakeWord(handleWakeWordDetected)
 
   // Cartesia provider: needs Groq API key, and Cartesia key only if using Cartesia TTS (not Edge)
   const isConfigured =
@@ -174,16 +161,6 @@ function JarvisInterface() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               Remembered
-            </span>
-          </div>
-        )}
-
-        {/* Wake word listening indicator */}
-        {isWakeWordListening && wakeWordEnabled && !isConnected && (
-          <div className="flex items-center gap-2">
-            <span className={`text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} flex items-center gap-1`}>
-              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-              Listening for "Jarvis"
             </span>
           </div>
         )}
