@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type ConversationState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error'
 export type AIProvider = 'elevenlabs' | 'openai' | 'groq'
+export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 
 interface Message {
   id: string
@@ -39,6 +40,8 @@ interface JarvisStore {
   setContinuousMode: (enabled: boolean) => void
   memoryEnabled: boolean
   setMemoryEnabled: (enabled: boolean) => void
+  openaiVoice: OpenAIVoice
+  setOpenaiVoice: (voice: OpenAIVoice) => void
 
   // Conversation history
   messages: Message[]
@@ -91,6 +94,8 @@ export const useJarvisStore = create<JarvisStore>()(
       setContinuousMode: (continuousMode) => set({ continuousMode }),
       memoryEnabled: true,
       setMemoryEnabled: (memoryEnabled) => set({ memoryEnabled }),
+      openaiVoice: 'onyx',
+      setOpenaiVoice: (openaiVoice) => set({ openaiVoice }),
 
       // Conversation
       messages: [],
@@ -136,6 +141,7 @@ export const useJarvisStore = create<JarvisStore>()(
         voiceEnabled: state.voiceEnabled,
         continuousMode: state.continuousMode,
         memoryEnabled: state.memoryEnabled,
+        openaiVoice: state.openaiVoice,
       }),
     }
   )

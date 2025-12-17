@@ -3,18 +3,22 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useJarvisStore } from '@/store/jarvis-store'
 
-// Use global type from src/types/speech.d.ts
 export function useOpenAI() {
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const isProcessingRef = useRef(false)
+  const animationFrameRef = useRef<number | null>(null)
+  const audioElementRef = useRef<HTMLAudioElement | null>(null)
+  const isRecordingRef = useRef(false)
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastAudioLevelRef = useRef(0)
+  const processingRef = useRef(false)
 
   const {
     openaiApiKey,
-    mem0ApiKey,
+    openaiVoice,
     setState,
     setAudioLevel,
     setCurrentTranscript,
@@ -22,192 +26,193 @@ export function useOpenAI() {
     setIsConnected,
     setMicPermission,
     continuousMode,
-    memoryEnabled,
-    voiceEnabled,
-    messages,
   } = useJarvisStore()
 
-  // Search memories
-  const searchMemories = useCallback(async (query: string) => {
-    if (!memoryEnabled || !mem0ApiKey) return []
+  // Transcribe audio using OpenAI Whisper
+  const transcribeAudio = useCallback(async (audioBlob: Blob): Promise<string> => {
+    const formData = new FormData()
+    formData.append('audio', audioBlob)
+    formData.append('apiKey', openaiApiKey)
 
-    try {
-      const response = await fetch('https://api.mem0.ai/v1/memories/search/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${mem0ApiKey}`,
-        },
-        body: JSON.stringify({
-          query,
-          filters: { user_id: 'jarvis_user' },
-          limit: 5,
-        }),
-      })
+    const response = await fetch('/api/openai-transcribe', {
+      method: 'POST',
+      body: formData,
+    })
 
-      if (!response.ok) return []
-      const data = await response.json()
-      return data.results || data || []
-    } catch {
-      return []
-    }
-  }, [memoryEnabled, mem0ApiKey])
-
-  // Save to memory
-  const addMemory = useCallback(async (content: string) => {
-    if (!memoryEnabled || !mem0ApiKey) return
-
-    try {
-      await fetch('https://api.mem0.ai/v1/memories/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${mem0ApiKey}`,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content }],
-          user_id: 'jarvis_user',
-        }),
-      })
-    } catch (err) {
-      console.error('Memory save error:', err)
-    }
-  }, [memoryEnabled, mem0ApiKey])
-
-  // Call OpenAI
-  const callOpenAI = useCallback(async (userMessage: string) => {
-    const memories = await searchMemories(userMessage)
-
-    let systemPrompt = `You are JARVIS, an advanced AI assistant inspired by the AI from Iron Man.
-You are helpful, intelligent, and speak with a refined British accent.
-Keep responses concise but informative. Be witty when appropriate.
-You have access to the user's conversation history and memories.`
-
-    if (memories.length > 0) {
-      const memoryContext = memories
-        .map((m: any) => m.memory || m.text || m.content)
-        .filter(Boolean)
-        .join('\n- ')
-      systemPrompt += `\n\nRelevant memories about the user:\n- ${memoryContext}`
+    if (!response.ok) {
+      throw new Error('Transcription failed')
     }
 
-    const conversationMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messages.slice(-12).map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      { role: 'user', content: userMessage },
-    ]
+    const data = await response.json()
+    return data.text || ''
+  }, [openaiApiKey])
 
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: conversationMessages,
-          max_tokens: 500,
-          temperature: 0.7,
-        }),
-      })
+  // Get chat response from OpenAI
+  const getChatResponse = useCallback(async (message: string): Promise<string> => {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        apiKey: openaiApiKey,
+        provider: 'openai',
+      }),
+    })
 
-      if (!response.ok) throw new Error(`API error: ${response.status}`)
-
-      const data = await response.json()
-      const assistantMessage = data.choices[0].message.content
-
-      // Save to memory in background
-      addMemory(`User: ${userMessage}\nJarvis: ${assistantMessage}`)
-
-      return assistantMessage
-    } catch (error) {
-      console.error('OpenAI error:', error)
-      return "I encountered an error processing your request. Please try again."
+    if (!response.ok) {
+      throw new Error('Chat failed')
     }
-  }, [openaiApiKey, messages, searchMemories, addMemory])
 
-  // Text-to-speech
-  const speak = useCallback((text: string): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!voiceEnabled) {
+    const data = await response.json()
+    return data.text || ''
+  }, [openaiApiKey])
+
+  // Get TTS audio from OpenAI
+  const getAudioResponse = useCallback(async (text: string): Promise<Blob> => {
+    const response = await fetch('/api/openai-tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        apiKey: openaiApiKey,
+        voice: openaiVoice || 'onyx', // onyx is deep and smooth, good for JARVIS
+        speed: 1.05, // Slightly faster for snappier responses
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error('TTS failed')
+    }
+
+    return await response.blob()
+  }, [openaiApiKey, openaiVoice])
+
+  // Play audio with visualization
+  const playAudio = useCallback((audioBlob: Blob): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(audioBlob)
+      const audio = new Audio(url)
+      audioElementRef.current = audio
+
+      // Create audio context for visualization
+      const audioContext = new AudioContext()
+      const source = audioContext.createMediaElementSource(audio)
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 256
+
+      source.connect(analyser)
+      analyser.connect(audioContext.destination)
+
+      let visualizationFrame: number
+
+      const visualize = () => {
+        const dataArray = new Uint8Array(analyser.frequencyBinCount)
+        analyser.getByteFrequencyData(dataArray)
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length
+        setAudioLevel(average / 255)
+        visualizationFrame = requestAnimationFrame(visualize)
+      }
+
+      audio.onplay = () => {
+        setState('speaking')
+        visualize()
+      }
+
+      audio.onended = () => {
+        cancelAnimationFrame(visualizationFrame)
+        setAudioLevel(0)
+        audioContext.close()
+        URL.revokeObjectURL(url)
+        audioElementRef.current = null
         resolve()
+      }
+
+      audio.onerror = (e) => {
+        cancelAnimationFrame(visualizationFrame)
+        setAudioLevel(0)
+        audioContext.close()
+        URL.revokeObjectURL(url)
+        audioElementRef.current = null
+        reject(e)
+      }
+
+      audio.play().catch(reject)
+    })
+  }, [setState, setAudioLevel])
+
+  // Process recorded audio
+  const processAudio = useCallback(async () => {
+    if (audioChunksRef.current.length === 0 || processingRef.current) return
+
+    processingRef.current = true
+    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+    audioChunksRef.current = []
+
+    try {
+      setState('thinking')
+      setCurrentTranscript('Listening...')
+
+      // Transcribe
+      const transcript = await transcribeAudio(audioBlob)
+
+      if (!transcript.trim()) {
+        if (isRecordingRef.current) {
+          setState('listening')
+          setCurrentTranscript('')
+          startRecording()
+        }
+        processingRef.current = false
         return
       }
 
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 1.0
-      utterance.pitch = 1.0
+      setCurrentTranscript(transcript)
+      addMessage('user', transcript)
 
-      // Try to find a British voice
-      const voices = speechSynthesis.getVoices()
-      const preferredVoice = voices.find((v) =>
-        v.name.includes('Daniel') ||
-        v.name.includes('Google UK') ||
-        v.lang.includes('en-GB')
-      )
-      if (preferredVoice) utterance.voice = preferredVoice
-
-      utterance.onstart = () => {
-        setState('speaking')
-        // Simulate audio level for speaking
-        const interval = setInterval(() => {
-          setAudioLevel(0.3 + Math.random() * 0.4)
-        }, 100)
-        utterance.onend = () => {
-          clearInterval(interval)
-          setAudioLevel(0)
-          resolve()
-        }
-        utterance.onerror = () => {
-          clearInterval(interval)
-          setAudioLevel(0)
-          resolve()
-        }
-      }
-
-      speechSynthesis.speak(utterance)
-    })
-  }, [voiceEnabled, setState, setAudioLevel])
-
-  // Process user input
-  const processInput = useCallback(async (text: string) => {
-    if (!text.trim() || isProcessingRef.current) return
-
-    isProcessingRef.current = true
-    addMessage('user', text)
-    setState('thinking')
-    setCurrentTranscript('')
-
-    try {
-      const response = await callOpenAI(text)
+      // Get response
+      setCurrentTranscript('Thinking...')
+      const response = await getChatResponse(transcript)
+      setCurrentTranscript(response)
       addMessage('assistant', response)
-      await speak(response)
+
+      // Get and play audio
+      const audioResponse = await getAudioResponse(response)
+      await playAudio(audioResponse)
+
+      // Continue listening if connected
+      if (isRecordingRef.current && continuousMode) {
+        setState('listening')
+        setCurrentTranscript('')
+        startRecording()
+      } else if (isRecordingRef.current) {
+        setState('listening')
+        setCurrentTranscript('')
+        startRecording()
+      }
     } catch (error) {
       console.error('Processing error:', error)
       setState('error')
-    }
-
-    isProcessingRef.current = false
-
-    if (continuousMode) {
+      setCurrentTranscript('Error processing audio')
       setTimeout(() => {
-        if (recognitionRef.current) {
+        if (isRecordingRef.current) {
           setState('listening')
-          try {
-            recognitionRef.current.start()
-          } catch {}
+          setCurrentTranscript('')
+          startRecording()
         }
-      }, 500)
-    } else {
-      setState('idle')
+      }, 2000)
     }
-  }, [addMessage, setState, setCurrentTranscript, callOpenAI, speak, continuousMode])
 
-  // Audio analysis
+    processingRef.current = false
+  }, [transcribeAudio, getChatResponse, getAudioResponse, playAudio, setState, setCurrentTranscript, addMessage, continuousMode])
+
+  // Start recording
+  const startRecording = useCallback(() => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'recording') return
+
+    audioChunksRef.current = []
+    mediaRecorderRef.current.start(100)
+  }, [])
+
+  // Audio analysis for visualization and silence detection
   const startAudioAnalysis = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -221,27 +226,81 @@ You have access to the user's conversation history and memories.`
       const source = audioContextRef.current.createMediaStreamSource(stream)
       source.connect(analyserRef.current)
 
-      const analyze = () => {
+      // Set up MediaRecorder
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      })
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorderRef.current.onstop = () => {
+        if (!processingRef.current) {
+          processAudio()
+        }
+      }
+
+      const analyzeAudio = () => {
         if (!analyserRef.current || !mediaStreamRef.current) return
 
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
         analyserRef.current.getByteFrequencyData(dataArray)
-        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length
-        setAudioLevel(average / 255)
 
-        requestAnimationFrame(analyze)
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length
+        const normalizedLevel = average / 255
+
+        // Only update audio level if listening (not speaking)
+        const currentState = useJarvisStore.getState().state
+        if (currentState === 'listening') {
+          setAudioLevel(normalizedLevel)
+        }
+
+        // Silence detection
+        if (currentState === 'listening' && isRecordingRef.current && !processingRef.current) {
+          if (normalizedLevel < 0.015) {
+            // Low audio - start silence timer
+            if (!silenceTimeoutRef.current && lastAudioLevelRef.current >= 0.015) {
+              silenceTimeoutRef.current = setTimeout(() => {
+                if (mediaRecorderRef.current?.state === 'recording' && audioChunksRef.current.length > 0) {
+                  mediaRecorderRef.current.stop()
+                }
+                silenceTimeoutRef.current = null
+              }, 1200) // 1.2 seconds of silence - faster response
+            }
+          } else {
+            // Audio detected - clear silence timer
+            if (silenceTimeoutRef.current) {
+              clearTimeout(silenceTimeoutRef.current)
+              silenceTimeoutRef.current = null
+            }
+          }
+          lastAudioLevelRef.current = normalizedLevel
+        }
+
+        animationFrameRef.current = requestAnimationFrame(analyzeAudio)
       }
 
-      analyze()
+      analyzeAudio()
       return true
     } catch (error) {
-      console.error('Audio error:', error)
+      console.error('Audio analysis error:', error)
       setMicPermission('denied')
       return false
     }
-  }, [setAudioLevel, setMicPermission])
+  }, [setAudioLevel, setMicPermission, processAudio])
 
   const stopAudioAnalysis = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current)
+      silenceTimeoutRef.current = null
+    }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop())
       mediaStreamRef.current = null
@@ -250,134 +309,76 @@ You have access to the user's conversation history and memories.`
       audioContextRef.current.close()
       audioContextRef.current = null
     }
+    if (audioElementRef.current) {
+      audioElementRef.current.pause()
+      audioElementRef.current = null
+    }
     analyserRef.current = null
+    mediaRecorderRef.current = null
     setAudioLevel(0)
   }, [setAudioLevel])
 
-  // Speech recognition
-  const initSpeechRecognition = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      console.error('Speech recognition not supported')
-      return null
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-
-    let currentTranscript = ''
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interim = ''
-      let final = ''
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          final += transcript
-        } else {
-          interim += transcript
-        }
-      }
-
-      if (interim) {
-        currentTranscript = interim
-        setCurrentTranscript(interim)
-
-        // Reset silence timer
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current)
-        }
-        silenceTimerRef.current = setTimeout(() => {
-          if (currentTranscript.trim()) {
-            recognition.stop()
-            processInput(currentTranscript.trim())
-            currentTranscript = ''
-          }
-        }, 1500)
-      }
-
-      if (final) {
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current)
-        }
-        recognition.stop()
-        processInput(final.trim())
-        currentTranscript = ''
-      }
-    }
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        console.error('Speech error:', event.error)
-      }
-    }
-
-    recognition.onend = () => {
-      // Auto-restart if in continuous mode and not processing
-      if (continuousMode && !isProcessingRef.current && mediaStreamRef.current) {
-        setTimeout(() => {
-          try {
-            recognition.start()
-          } catch {}
-        }, 100)
-      }
-    }
-
-    return recognition
-  }, [setCurrentTranscript, processInput, continuousMode])
-
-  // Start session
+  // Start conversation
   const startConversation = useCallback(async () => {
     if (!openaiApiKey) {
-      console.error('No OpenAI API key')
+      console.error('No OpenAI API key configured')
       return false
     }
 
-    const audioReady = await startAudioAnalysis()
-    if (!audioReady) return false
-
-    recognitionRef.current = initSpeechRecognition()
-    if (!recognitionRef.current) return false
-
-    setIsConnected(true)
-    setState('listening')
-
     try {
-      recognitionRef.current.start()
-    } catch {}
+      const audioReady = await startAudioAnalysis()
+      if (!audioReady) {
+        return false
+      }
 
-    return true
-  }, [openaiApiKey, startAudioAnalysis, initSpeechRecognition, setIsConnected, setState])
+      isRecordingRef.current = true
+      processingRef.current = false
+      setIsConnected(true)
+      setState('listening')
 
-  // End session
-  const endConversation = useCallback(() => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current)
+      // Start recording
+      startRecording()
+
+      return true
+    } catch (error) {
+      console.error('Failed to start conversation:', error)
+      setState('error')
+      stopAudioAnalysis()
+      return false
+    }
+  }, [openaiApiKey, startAudioAnalysis, stopAudioAnalysis, setState, setIsConnected, startRecording])
+
+  // End conversation
+  const endConversation = useCallback(async () => {
+    isRecordingRef.current = false
+    processingRef.current = false
+
+    // Stop any playing audio
+    if (audioElementRef.current) {
+      audioElementRef.current.pause()
+      audioElementRef.current = null
     }
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop()
-      } catch {}
-      recognitionRef.current = null
+    // Stop recording
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
     }
 
     stopAudioAnalysis()
-    speechSynthesis.cancel()
     setIsConnected(false)
     setState('idle')
     setCurrentTranscript('')
   }, [stopAudioAnalysis, setIsConnected, setState, setCurrentTranscript])
 
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      endConversation()
+      if (audioElementRef.current) {
+        audioElementRef.current.pause()
+      }
+      stopAudioAnalysis()
     }
-  }, [endConversation])
+  }, [stopAudioAnalysis])
 
   return {
     startConversation,

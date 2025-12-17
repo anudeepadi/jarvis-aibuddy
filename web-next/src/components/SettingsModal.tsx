@@ -1,7 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { useJarvisStore } from '@/store/jarvis-store'
+import { useJarvisStore, OpenAIVoice } from '@/store/jarvis-store'
+
+const OPENAI_VOICES: { id: OpenAIVoice; name: string; description: string }[] = [
+  { id: 'onyx', name: 'Onyx', description: 'Deep & authoritative' },
+  { id: 'echo', name: 'Echo', description: 'Warm & clear' },
+  { id: 'fable', name: 'Fable', description: 'Expressive & British' },
+  { id: 'alloy', name: 'Alloy', description: 'Neutral & balanced' },
+  { id: 'nova', name: 'Nova', description: 'Friendly & upbeat' },
+  { id: 'shimmer', name: 'Shimmer', description: 'Soft & gentle' },
+]
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -24,6 +33,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setContinuousMode,
     memoryEnabled,
     setMemoryEnabled,
+    openaiVoice,
+    setOpenaiVoice,
   } = useJarvisStore()
 
   const [localKeys, setLocalKeys] = useState({
@@ -175,6 +186,29 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 placeholder="sk-xxxxxxxxxx"
                 className="w-full px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-gray-700 text-white placeholder-gray-600 focus:border-cyan-500 focus:outline-none font-mono text-sm"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Voice
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {OPENAI_VOICES.map((voice) => (
+                  <button
+                    key={voice.id}
+                    onClick={() => setOpenaiVoice(voice.id)}
+                    className={`p-2 rounded-lg border transition-all text-left ${
+                      openaiVoice === voice.id
+                        ? 'border-cyan-500 bg-cyan-500/10'
+                        : 'border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className={`text-sm font-medium ${openaiVoice === voice.id ? 'text-white' : 'text-gray-300'}`}>
+                      {voice.name}
+                    </div>
+                    <div className="text-xs text-gray-500">{voice.description}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
