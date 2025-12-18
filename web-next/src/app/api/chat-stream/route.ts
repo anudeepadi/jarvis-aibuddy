@@ -442,12 +442,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Only include tools if user has calendar access
+    // Note: Groq supports function calling with llama-3.3-70b-versatile
     if (hasCalendarAccess) {
       requestBody.tools = CALENDAR_TOOLS
       requestBody.tool_choice = 'auto'
     }
 
-    const response = await fetch(apiUrl, {
+    let response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -455,6 +456,25 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(requestBody),
     })
+
+    // If tools cause an error, retry without them
+    if (!response.ok && hasCalendarAccess) {
+      const errorText = await response.text()
+      console.error('Chat stream error with tools, retrying without:', errorText)
+
+      // Remove tools and retry
+      delete requestBody.tools
+      delete requestBody.tool_choice
+
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+    }
 
     if (!response.ok) {
       const error = await response.text()
