@@ -501,6 +501,7 @@ export async function POST(request: NextRequest) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6)
             if (data === '[DONE]') {
+              console.log('Stream complete, tool calls:', accumulatedToolCalls.size)
               // Check if we have accumulated tool calls to execute
               if (accumulatedToolCalls.size > 0 && userId) {
                 isToolCallResponse = true
@@ -639,6 +640,7 @@ export async function POST(request: NextRequest) {
               // Handle regular content
               const content = delta?.content || ''
               if (content && !isToolCallResponse) {
+                console.log('Streaming text chunk:', content.slice(0, 50))
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`))
               }
             } catch {

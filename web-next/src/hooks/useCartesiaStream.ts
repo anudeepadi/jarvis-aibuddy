@@ -439,6 +439,7 @@ export function useCartesiaStream() {
 
             try {
               const json = JSON.parse(data)
+              console.log('Stream chunk:', json)
 
               // Handle tool call results (calendar functions)
               if (json.tool_call) {
