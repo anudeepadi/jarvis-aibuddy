@@ -9,6 +9,7 @@ import { useGroqVoice } from '@/hooks/useGroqVoice'
 import { useCartesiaStream } from '@/hooks/useCartesiaStream'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
+import { CalendarView } from '@/components/calendar/CalendarView'
 
 function LoadingScreen() {
   return (
@@ -40,6 +41,8 @@ function JarvisInterface() {
     lastMemorySaved,
     lastMemoryRetrieved,
     memoryEnabled,
+    showCalendar,
+    setShowCalendar,
   } = useJarvisStore()
 
   const elevenLabs = useElevenLabs()
@@ -234,6 +237,17 @@ function JarvisInterface() {
           </div>
         )}
 
+        {/* Calendar button */}
+        <button
+          onClick={() => setShowCalendar(true)}
+          className={`w-10 h-10 flex items-center justify-center rounded-full ${mutedColor} hover:${textColor} hover:bg-white/10 transition-colors`}
+          aria-label="Calendar"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </button>
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
@@ -368,6 +382,9 @@ function JarvisInterface() {
 
       {/* Settings Modal */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
+      {/* Calendar View */}
+      {showCalendar && <CalendarView onClose={() => setShowCalendar(false)} />}
     </main>
   )
 }

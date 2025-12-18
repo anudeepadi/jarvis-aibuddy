@@ -90,6 +90,10 @@ interface JarvisStore {
   // Memory retrieval visibility
   lastMemoryRetrieved: { count: number; query: string; timestamp: number } | null
   setLastMemoryRetrieved: (data: { count: number; query: string; timestamp: number } | null) => void
+
+  // Calendar UI
+  showCalendar: boolean
+  setShowCalendar: (show: boolean) => void
 }
 
 export const useJarvisStore = create<JarvisStore>()(
@@ -173,6 +177,10 @@ export const useJarvisStore = create<JarvisStore>()(
       // Memory retrieval visibility
       lastMemoryRetrieved: null,
       setLastMemoryRetrieved: (lastMemoryRetrieved) => set({ lastMemoryRetrieved }),
+
+      // Calendar UI
+      showCalendar: false,
+      setShowCalendar: (showCalendar) => set({ showCalendar }),
     }),
     {
       name: 'jarvis-storage',

@@ -11,6 +11,8 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@elevenlabs/react": "^0.12.3",
     "@prisma/client": "^5.22.0",
+    "googleapis": "^169.0.0",
+    "lucide-react": "^0.561.0",
     "next": "^15.5.9",
     "next-auth": "^5.0.0-beta.30",
     "prisma": "^5.22.0",

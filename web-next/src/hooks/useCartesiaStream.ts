@@ -422,6 +422,7 @@ export function useCartesiaStream() {
     let fullText = ''
     let buffer = ''
     const ttsPromises: Promise<void>[] = []
+    let toolCallExecuted = false
 
     try {
       while (true) {
@@ -438,6 +439,26 @@ export function useCartesiaStream() {
 
             try {
               const json = JSON.parse(data)
+
+              // Handle tool call results (calendar functions)
+              if (json.tool_call) {
+                toolCallExecuted = true
+                const { name, result } = json.tool_call
+                console.log(`Calendar function executed: ${name}`, result)
+
+                // Show brief visual feedback while waiting for LLM response
+                if (!fullText) {
+                  const actionText = name.includes('create') ? 'Creating event...' :
+                                    name.includes('list') ? 'Checking calendar...' :
+                                    name.includes('update') ? 'Updating event...' :
+                                    name.includes('delete') ? 'Deleting event...' :
+                                    name.includes('availability') ? 'Checking availability...' :
+                                    'Processing...'
+                  setCurrentTranscript(actionText + '▋')
+                }
+              }
+
+              // Handle regular text content
               if (json.text) {
                 fullText += json.text
                 buffer += json.text
