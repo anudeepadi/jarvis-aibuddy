@@ -94,6 +94,14 @@ interface JarvisStore {
   // Calendar UI
   showCalendar: boolean
   setShowCalendar: (show: boolean) => void
+
+  // Wake Word
+  wakeWordEnabled: boolean
+  setWakeWordEnabled: (enabled: boolean) => void
+
+  // Location
+  userLocation: { lat: number; lon: number; city?: string } | null
+  setUserLocation: (location: { lat: number; lon: number; city?: string } | null) => void
 }
 
 export const useJarvisStore = create<JarvisStore>()(
@@ -181,6 +189,14 @@ export const useJarvisStore = create<JarvisStore>()(
       // Calendar UI
       showCalendar: false,
       setShowCalendar: (showCalendar) => set({ showCalendar }),
+
+      // Wake Word
+      wakeWordEnabled: false,
+      setWakeWordEnabled: (wakeWordEnabled) => set({ wakeWordEnabled }),
+
+      // Location
+      userLocation: null,
+      setUserLocation: (userLocation) => set({ userLocation }),
     }),
     {
       name: 'jarvis-storage',
@@ -206,6 +222,7 @@ export const useJarvisStore = create<JarvisStore>()(
         language: state.language,
         theme: state.theme,
         messages: state.messages, // Persist conversation history
+        wakeWordEnabled: state.wakeWordEnabled,
       }),
     }
   )

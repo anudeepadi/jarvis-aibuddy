@@ -53,6 +53,7 @@ export function useCartesiaStream() {
     memoryEnabled,
     language,
     messages,
+    userLocation,
     setState,
     setAudioLevel,
     setCurrentTranscript,
@@ -409,6 +410,7 @@ export function useCartesiaStream() {
         provider: 'groq',
         conversationHistory,
         memoryContext: memoryContext || undefined,  // Send separately for system prompt
+        userLocation: userLocation || undefined,  // Include location for weather/context
       }),
       signal: abortControllerRef.current.signal,
     })
@@ -523,7 +525,7 @@ export function useCartesiaStream() {
 
     await Promise.all(ttsPromises)
     return fullText
-  }, [groqApiKey, getTTSAudio, queueAudioWithIndex, startTypewriter, stopTypewriter, setCurrentTranscript])
+  }, [groqApiKey, userLocation, getTTSAudio, queueAudioWithIndex, startTypewriter, stopTypewriter, setCurrentTranscript])
 
   // Process recorded audio
   const processAudio = useCallback(async () => {

@@ -140,9 +140,30 @@ const CALENDAR_TOOLS = [
       },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_weather',
+      description: 'Get current weather and forecast. Use this when the user asks about weather, temperature, or if they should bring an umbrella.',
+      parameters: {
+        type: 'object',
+        properties: {
+          lat: {
+            type: 'number',
+            description: 'Latitude of the location',
+          },
+          lon: {
+            type: 'number',
+            description: 'Longitude of the location',
+          },
+        },
+        required: ['lat', 'lon'],
+      },
+    },
+  },
 ]
 
-function getSystemPrompt(memoryContext?: string): string {
+function getSystemPrompt(memoryContext?: string, userLocation?: { lat: number; lon: number; city?: string }): string {
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -160,7 +181,16 @@ function getSystemPrompt(memoryContext?: string): string {
   let prompt = `You are Jarvis, an intelligent AI assistant inspired by the AI from Iron Man. You are helpful, witty, and concise. Keep responses brief and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or long explanations - speak naturally as if having a conversation.
 
 ## Current Date/Time
-Today is ${dateStr}. The current time is ${timeStr} (${timezone}).
+Today is ${dateStr}. The current time is ${timeStr} (${timezone}).`
+
+  // Add location context if available
+  if (userLocation) {
+    prompt += `\n\n## User Location
+The user is located at coordinates (${userLocation.lat}, ${userLocation.lon})${userLocation.city ? ` in ${userLocation.city}` : ''}.
+When they ask about weather, use the get_weather function with these coordinates.`
+  }
+
+  prompt += `
 
 ## Calendar Functions
 You have access to the user's Google Calendar. When the user asks about their schedule, wants to create events, or manage their calendar, use the appropriate function. Always use ISO 8601 format for dates and times, with the user's timezone (${timezone}).
@@ -172,7 +202,13 @@ When creating events:
 
 When listing events:
 - Summarize the events naturally in conversation
-- Include the time and title of each event`
+- Include the time and title of each event
+
+## Weather
+You can check the weather using the get_weather function. When reporting weather:
+- Include current temperature and conditions
+- Mention if rain or snow is expected
+- Give practical advice like "bring an umbrella" when appropriate`
 
   if (memoryContext) {
     prompt += `\n\n## User Background\n${memoryContext}\n\nUse this information naturally in conversation without explicitly mentioning "memories" or "I remember".`
@@ -375,14 +411,40 @@ async function executeCalendarFunction(
         }
       }
 
+      case 'get_weather': {
+        const { lat, lon } = args as { lat: number; lon: number }
+
+        try {
+          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          const weatherResponse = await fetch(`${baseUrl}/api/weather?lat=${lat}&lon=${lon}`)
+
+          if (!weatherResponse.ok) {
+            throw new Error('Weather API error')
+          }
+
+          const weather = await weatherResponse.json()
+
+          return {
+            success: true,
+            message: `Current weather: ${weather.current.temp}°, ${weather.current.description}`,
+            data: weather,
+          }
+        } catch {
+          return {
+            success: false,
+            message: 'Failed to fetch weather data',
+          }
+        }
+      }
+
       default:
         return { success: false, message: `Unknown function: ${functionName}` }
     }
   } catch (error) {
-    console.error('Calendar function error:', error)
+    console.error('Function execution error:', error)
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Calendar operation failed',
+      message: error instanceof Error ? error.message : 'Operation failed',
     }
   }
 }
@@ -395,12 +457,14 @@ export async function POST(request: NextRequest) {
       provider = 'groq',
       conversationHistory = [],
       memoryContext,
+      userLocation,
     } = (await request.json()) as {
       message: string
       apiKey: string
       provider?: string
       conversationHistory?: ConversationMessage[]
       memoryContext?: string
+      userLocation?: { lat: number; lon: number; city?: string }
     }
 
     if (!message || !apiKey) {
@@ -427,7 +491,7 @@ export async function POST(request: NextRequest) {
       content: msg.content,
     }))
 
-    const systemPrompt = getSystemPrompt(memoryContext)
+    const systemPrompt = getSystemPrompt(memoryContext, userLocation)
 
     const requestBody: Record<string, unknown> = {
       model,

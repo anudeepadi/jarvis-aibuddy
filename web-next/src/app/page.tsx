@@ -7,6 +7,8 @@ import { useElevenLabs } from '@/hooks/useElevenLabs'
 import { useOpenAI } from '@/hooks/useOpenAI'
 import { useGroqVoice } from '@/hooks/useGroqVoice'
 import { useCartesiaStream } from '@/hooks/useCartesiaStream'
+import { useLocation } from '@/hooks/useLocation'
+import { useWakeWord } from '@/hooks/useWakeWord'
 import { FibonacciSphere } from '@/components/FibonacciSphere'
 import { SettingsModal } from '@/components/SettingsModal'
 import { CalendarView } from '@/components/calendar/CalendarView'
@@ -43,6 +45,9 @@ function JarvisInterface() {
     memoryEnabled,
     showCalendar,
     setShowCalendar,
+    wakeWordEnabled,
+    setWakeWordEnabled,
+    setUserLocation,
   } = useJarvisStore()
 
   const elevenLabs = useElevenLabs()
@@ -50,6 +55,32 @@ function JarvisInterface() {
   const groqVoice = useGroqVoice()
   const cartesiaStream = useCartesiaStream()
 
+  // Location hook - request on first load
+  const { location, requestLocation, permissionStatus: locationPermission } = useLocation()
+
+  // Update store with location
+  useEffect(() => {
+    if (location) {
+      setUserLocation({
+        lat: location.latitude,
+        lon: location.longitude,
+        city: location.city,
+      })
+    }
+  }, [location, setUserLocation])
+
+  // Request location on first load if not granted
+  useEffect(() => {
+    if (locationPermission === 'prompt') {
+      // Delay location request to avoid overwhelming user with permissions
+      const timer = setTimeout(() => {
+        requestLocation()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [locationPermission, requestLocation])
+
+  // Provider selection needs to be defined before wake word callback
   // Provider selection: cartesia (best value), elevenlabs (best quality), groq (cheapest), openai (fallback)
   const currentProvider =
     provider === 'cartesia' ? cartesiaStream :
@@ -63,6 +94,46 @@ function JarvisInterface() {
     provider === 'groq' ? !!groqApiKey :
     provider === 'elevenlabs' ? !!elevenLabsAgentId :
     !!openaiApiKey
+
+  // Wake word detection - "Hey Jarvis"
+  const handleWakeWord = useCallback(() => {
+    if (isConfigured && !isConnected) {
+      console.log('Wake word detected! Starting conversation...')
+      currentProvider.startConversation()
+    }
+  }, [isConfigured, isConnected, currentProvider])
+
+  const {
+    isListening: isWakeWordListening,
+    isLoading: isWakeWordLoading,
+    error: wakeWordError,
+    startListening: startWakeWord,
+    stopListening: stopWakeWord,
+    isSupported: isWakeWordSupported,
+  } = useWakeWord({
+    keyword: 'jarvis',
+    onWakeWord: handleWakeWord,
+  })
+
+  // Auto-start/stop wake word based on setting
+  useEffect(() => {
+    if (wakeWordEnabled && isConfigured && !isWakeWordListening && !isWakeWordLoading) {
+      startWakeWord()
+    } else if (!wakeWordEnabled && isWakeWordListening) {
+      stopWakeWord()
+    }
+  }, [wakeWordEnabled, isConfigured, isWakeWordListening, isWakeWordLoading, startWakeWord, stopWakeWord])
+
+  // Stop wake word when conversation is active
+  useEffect(() => {
+    if (isConnected && isWakeWordListening) {
+      stopWakeWord()
+    } else if (!isConnected && wakeWordEnabled && !isWakeWordListening && isConfigured) {
+      // Restart wake word after conversation ends
+      const timer = setTimeout(() => startWakeWord(), 500)
+      return () => clearTimeout(timer)
+    }
+  }, [isConnected, wakeWordEnabled, isWakeWordListening, isConfigured, startWakeWord, stopWakeWord])
 
   useEffect(() => {
     if (!isConfigured) {
@@ -235,6 +306,29 @@ function JarvisInterface() {
               </>
             )}
           </div>
+        )}
+
+        {/* Wake Word toggle */}
+        {isWakeWordSupported && (
+          <button
+            onClick={() => setWakeWordEnabled(!wakeWordEnabled)}
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
+              wakeWordEnabled
+                ? isWakeWordListening
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-yellow-500/20 text-yellow-400'
+                : `${mutedColor} hover:${textColor} hover:bg-white/10`
+            }`}
+            aria-label={wakeWordEnabled ? 'Disable wake word' : 'Enable wake word'}
+            title={wakeWordEnabled ? (isWakeWordListening ? 'Listening for "Hey Jarvis"' : 'Wake word loading...') : 'Click to enable "Hey Jarvis"'}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 012.828-2.828" />
+              {!wakeWordEnabled && (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6" />
+              )}
+            </svg>
+          </button>
         )}
 
         {/* Calendar button */}
