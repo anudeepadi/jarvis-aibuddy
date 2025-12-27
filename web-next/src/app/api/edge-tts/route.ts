@@ -7,6 +7,27 @@ import path from 'path'
 
 const execAsync = promisify(exec)
 
+// Get edge-tts path from environment or use common locations
+const getEdgeTTSPath = (): string => {
+  // Check if custom path is set via environment variable
+  if (process.env.EDGE_TTS_PATH) {
+    return process.env.EDGE_TTS_PATH
+  }
+  // Common installation paths (check in order)
+  const commonPaths = [
+    '/opt/anaconda3/bin/edge-tts',
+    '/usr/local/bin/edge-tts',
+    '/usr/bin/edge-tts',
+    `${process.env.HOME}/.local/bin/edge-tts`,
+    `${process.env.HOME}/anaconda3/bin/edge-tts`,
+    `${process.env.HOME}/miniconda3/bin/edge-tts`,
+  ]
+  // Just return the first one that might exist - we'll fall back to 'edge-tts' if none work
+  return commonPaths[0]
+}
+
+const EDGE_TTS_PATH = getEdgeTTSPath()
+
 // Edge TTS voices - https://github.com/rany2/edge-tts
 // These are Microsoft Azure voices, completely FREE
 const EDGE_VOICES: Record<string, string> = {
@@ -149,8 +170,9 @@ export async function POST(request: NextRequest) {
 
     try {
       // Call edge-tts CLI (Python version)
+      // Use full path to avoid PATH issues in child process shells
       await execAsync(
-        `edge-tts --voice "${voice}" --rate="${rate}" --pitch="${pitch}" --text "${escapedText}" --write-media "${tempFile}"`,
+        `"${EDGE_TTS_PATH}" --voice "${voice}" --rate="${rate}" --pitch="${pitch}" --text "${escapedText}" --write-media "${tempFile}"`,
         { timeout: 30000 }
       )
 

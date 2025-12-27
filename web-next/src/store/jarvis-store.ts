@@ -2,10 +2,11 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type ConversationState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error'
-export type AIProvider = 'elevenlabs' | 'openai' | 'groq' | 'cartesia'
+export type AIProvider = 'elevenlabs' | 'openai' | 'groq' | 'cartesia' | 'gemini-live'
 export type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 export type CartesiaVoice = 'british-butler' | 'confident-british' | 'deep-narrator' | 'professional-male' | 'wise-man' | 'reading-man' | 'professional-female' | 'british-lady' | 'warm-female' | 'commercial-lady'
 export type EdgeVoice = 'british-male' | 'american-male' | 'australian-male' | 'british-female' | 'american-female' | 'australian-female'
+export type GeminiVoice = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Aoede' | 'Orbit' | 'Clio' | 'Zephyr' | 'Nova' | 'Aria'
 export type TTSProvider = 'cartesia' | 'edge'
 export type Theme = 'dark' | 'light'
 export type Language = 'auto' | 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'ja' | 'ko' | 'zh' | 'ar' | 'ru'
@@ -36,8 +37,9 @@ interface JarvisStore {
   openaiApiKey: string
   groqApiKey: string
   cartesiaApiKey: string
+  geminiApiKey: string
   mem0ApiKey: string
-  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'cartesiaApiKey' | 'mem0ApiKey', value: string) => void
+  setApiKey: (key: 'elevenLabsApiKey' | 'elevenLabsAgentId' | 'openaiApiKey' | 'groqApiKey' | 'cartesiaApiKey' | 'geminiApiKey' | 'mem0ApiKey', value: string) => void
 
   // Settings
   voiceEnabled: boolean
@@ -50,6 +52,8 @@ interface JarvisStore {
   setOpenaiVoice: (voice: OpenAIVoice) => void
   cartesiaVoice: CartesiaVoice
   setCartesiaVoice: (voice: CartesiaVoice) => void
+  geminiVoice: GeminiVoice
+  setGeminiVoice: (voice: GeminiVoice) => void
   ttsProvider: TTSProvider
   setTtsProvider: (provider: TTSProvider) => void
   edgeVoice: EdgeVoice
@@ -124,6 +128,7 @@ export const useJarvisStore = create<JarvisStore>()(
       openaiApiKey: '',
       groqApiKey: '',
       cartesiaApiKey: '',
+      geminiApiKey: '',
       mem0ApiKey: '',
       setApiKey: (key, value) => set({ [key]: value }),
 
@@ -138,6 +143,8 @@ export const useJarvisStore = create<JarvisStore>()(
       setOpenaiVoice: (openaiVoice) => set({ openaiVoice }),
       cartesiaVoice: 'british-butler',
       setCartesiaVoice: (cartesiaVoice) => set({ cartesiaVoice }),
+      geminiVoice: 'Puck', // Default Gemini HD voice
+      setGeminiVoice: (geminiVoice) => set({ geminiVoice }),
       ttsProvider: 'edge', // Default to free Edge TTS
       setTtsProvider: (ttsProvider) => set({ ttsProvider }),
       edgeVoice: 'british-male', // Best JARVIS voice
@@ -210,6 +217,7 @@ export const useJarvisStore = create<JarvisStore>()(
         openaiApiKey: state.openaiApiKey,
         groqApiKey: state.groqApiKey,
         cartesiaApiKey: state.cartesiaApiKey,
+        geminiApiKey: state.geminiApiKey,
         mem0ApiKey: state.mem0ApiKey,
         provider: state.provider,
         voiceEnabled: state.voiceEnabled,
@@ -217,6 +225,7 @@ export const useJarvisStore = create<JarvisStore>()(
         memoryEnabled: state.memoryEnabled,
         openaiVoice: state.openaiVoice,
         cartesiaVoice: state.cartesiaVoice,
+        geminiVoice: state.geminiVoice,
         ttsProvider: state.ttsProvider,
         edgeVoice: state.edgeVoice,
         language: state.language,

@@ -704,8 +704,17 @@ export async function POST(request: NextRequest) {
               // Handle regular content
               const content = delta?.content || ''
               if (content && !isToolCallResponse) {
-                console.log('Streaming text chunk:', content.slice(0, 50))
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: content })}\n\n`))
+                // Filter out function call syntax that LLM sometimes outputs as text
+                // (e.g., <function=create_calendar_event>{"summary": ...}</function>)
+                const cleanContent = content
+                  .replace(/<function=[^>]*>[\s\S]*?<\/function>/g, '')
+                  .replace(/<function=[^>]*>/g, '')  // Opening tags without close
+                  .replace(/<\/function>/g, '')      // Orphan closing tags
+
+                if (cleanContent.trim()) {
+                  console.log('Streaming text chunk:', cleanContent.slice(0, 50))
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: cleanContent })}\n\n`))
+                }
               }
             } catch {
               // Skip malformed JSON
