@@ -9,6 +9,7 @@ export type EdgeVoice = 'british-male' | 'american-male' | 'australian-male' | '
 export type TTSProvider = 'cartesia' | 'edge'
 export type Theme = 'dark' | 'light'
 export type Language = 'auto' | 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'ja' | 'ko' | 'zh' | 'ar' | 'ru'
+export type VisualizationMode = 'sphere' | 'terrain'
 
 interface Message {
   id: string
@@ -42,6 +43,8 @@ interface JarvisStore {
   // Settings
   voiceEnabled: boolean
   setVoiceEnabled: (enabled: boolean) => void
+  soundEnabled: boolean
+  setSoundEnabled: (enabled: boolean) => void
   continuousMode: boolean
   setContinuousMode: (enabled: boolean) => void
   memoryEnabled: boolean
@@ -94,6 +97,16 @@ interface JarvisStore {
   // Calendar UI
   showCalendar: boolean
   setShowCalendar: (show: boolean) => void
+
+  // Visualization mode
+  visualizationMode: VisualizationMode
+  setVisualizationMode: (mode: VisualizationMode) => void
+
+  // Wake-word effect triggers
+  wakeWordTriggered: boolean
+  setWakeWordTriggered: (triggered: boolean) => void
+  wakeWordTimestamp: number | null
+  setWakeWordTimestamp: (ts: number | null) => void
 }
 
 export const useJarvisStore = create<JarvisStore>()(
@@ -122,6 +135,8 @@ export const useJarvisStore = create<JarvisStore>()(
       // Settings
       voiceEnabled: true,
       setVoiceEnabled: (voiceEnabled) => set({ voiceEnabled }),
+      soundEnabled: true,
+      setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
       continuousMode: true,
       setContinuousMode: (continuousMode) => set({ continuousMode }),
       memoryEnabled: true,
@@ -181,6 +196,16 @@ export const useJarvisStore = create<JarvisStore>()(
       // Calendar UI
       showCalendar: false,
       setShowCalendar: (showCalendar) => set({ showCalendar }),
+
+      // Visualization mode
+      visualizationMode: 'sphere',
+      setVisualizationMode: (visualizationMode) => set({ visualizationMode }),
+
+      // Wake-word effect triggers (not persisted - transient state)
+      wakeWordTriggered: false,
+      setWakeWordTriggered: (wakeWordTriggered) => set({ wakeWordTriggered }),
+      wakeWordTimestamp: null,
+      setWakeWordTimestamp: (wakeWordTimestamp) => set({ wakeWordTimestamp }),
     }),
     {
       name: 'jarvis-storage',
@@ -197,6 +222,7 @@ export const useJarvisStore = create<JarvisStore>()(
         mem0ApiKey: state.mem0ApiKey,
         provider: state.provider,
         voiceEnabled: state.voiceEnabled,
+        soundEnabled: state.soundEnabled,
         continuousMode: state.continuousMode,
         memoryEnabled: state.memoryEnabled,
         openaiVoice: state.openaiVoice,
@@ -205,6 +231,7 @@ export const useJarvisStore = create<JarvisStore>()(
         edgeVoice: state.edgeVoice,
         language: state.language,
         theme: state.theme,
+        visualizationMode: state.visualizationMode,
         messages: state.messages, // Persist conversation history
       }),
     }

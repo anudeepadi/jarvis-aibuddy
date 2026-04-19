@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useJarvisStore, OpenAIVoice, CartesiaVoice, EdgeVoice, TTSProvider, Theme, Language } from '@/store/jarvis-store'
+import { useJarvisStore, OpenAIVoice, CartesiaVoice, EdgeVoice, TTSProvider, Theme, Language, VisualizationMode } from '@/store/jarvis-store'
 
 const EDGE_VOICES: { id: EdgeVoice; name: string; description: string }[] = [
   { id: 'british-male', name: 'British Male', description: 'Ryan - Best for JARVIS' },
@@ -80,6 +80,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setLanguage,
     theme,
     setTheme,
+    visualizationMode,
+    setVisualizationMode,
   } = useJarvisStore()
 
   const isDark = theme === 'dark'
@@ -525,6 +527,46 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <div className={`text-xs ${textMuted}`}>Better visibility</div>
             </button>
           </div>
+        </div>
+
+        {/* Visualization Mode */}
+        <div className={`mb-6 border-t ${modalBorder} pt-6`}>
+          <label className={`block text-xs font-medium ${textSecondary} uppercase tracking-wide mb-3`}>
+            Visualization
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setVisualizationMode('sphere')}
+              className={`p-3 rounded-xl border transition-all ${
+                visualizationMode === 'sphere'
+                  ? 'border-cyan-500 bg-cyan-500/10'
+                  : `${buttonBorder} hover:border-gray-500`
+              }`}
+            >
+              <div className={`font-medium text-sm ${visualizationMode === 'sphere' ? textPrimary : textSecondary}`}>
+                Sphere
+              </div>
+              <div className={`text-xs ${textMuted}`}>Classic JARVIS orb</div>
+            </button>
+            <button
+              onClick={() => setVisualizationMode('terrain')}
+              className={`p-3 rounded-xl border transition-all ${
+                visualizationMode === 'terrain'
+                  ? 'border-cyan-500 bg-cyan-500/10'
+                  : `${buttonBorder} hover:border-gray-500`
+              }`}
+            >
+              <div className={`font-medium text-sm ${visualizationMode === 'terrain' ? textPrimary : textSecondary}`}>
+                Memory Terrain
+              </div>
+              <div className={`text-xs ${textMuted}`}>3D particle landscape</div>
+            </button>
+          </div>
+          <p className={`mt-2 text-xs ${textMuted}`}>
+            {visualizationMode === 'terrain'
+              ? 'Terrain shaped by your memory patterns with reactive effects'
+              : 'Classic animated sphere visualization'}
+          </p>
         </div>
 
         {/* Actions */}

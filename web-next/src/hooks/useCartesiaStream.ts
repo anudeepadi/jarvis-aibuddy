@@ -769,6 +769,10 @@ export function useCartesiaStream() {
       setIsConnected(true)
       setState('listening')
 
+      // Trigger wake-word visualization effect (ripple + bloom)
+      useJarvisStore.getState().setWakeWordTriggered(true)
+      useJarvisStore.getState().setWakeWordTimestamp(Date.now())
+
       // Start recording
       audioChunksRef.current = []
       mediaRecorderRef.current?.start(100)
